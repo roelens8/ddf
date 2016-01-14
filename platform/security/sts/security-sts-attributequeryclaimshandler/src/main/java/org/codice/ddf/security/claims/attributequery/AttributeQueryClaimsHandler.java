@@ -13,12 +13,17 @@
  */
 package org.codice.ddf.security.claims.attributequery;
 
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import javax.xml.namespace.QName;
+import javax.xml.ws.Service;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -49,6 +54,14 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
     protected static final String ERROR_RETRIEVING_ATTRIBUTES_SEC_LOG =
             "Error retrieving attributes from external attribute store [%s] for DN [%s]. ";
 
+    private Service service;
+
+    private String wsdlLocation;
+
+    private String serviceName;
+
+    private String portName;
+
     private String attributeMapLocation;
 
     private List<String> supportedClaims;
@@ -65,6 +78,8 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
 
     public AttributeQueryClaimsHandler() {
         LOGGER.debug("Starting AttributeQueryClaimsHandler");
+
+        initService();
     }
 
     /**
@@ -142,10 +157,12 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
 
         Assertion assertion;
         try {
-            assertion = createAttributeQueryClient(simpleSign,
+            assertion = createAttributeQueryClient(service,
+                    portName,
+                    simpleSign,
                     externalAttributeStoreUrl,
                     issuer,
-                    destination).retrieveResponse(nameId);
+                    destination).query(nameId);
 
             if (assertion != null) {
                 createClaims(claimCollection, assertion);
@@ -182,8 +199,8 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
                     String claimValue = attribute.getDOM()
                             .getTextContent();
                     if (attributeMap.containsKey(claimValue)) {
-                        claimsCollection.add(createSingleValuedClaim(claimType, attributeMap.get(
-                                claimValue)));
+                        claimsCollection.add(createSingleValuedClaim(claimType,
+                                attributeMap.get(claimValue)));
                     } else {
                         claimsCollection.add(createSingleValuedClaim(claimType, claimValue));
                     }
@@ -224,9 +241,40 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
      * @param destination               of request
      * @return AttributeQueryClient
      */
-    protected AttributeQueryClient createAttributeQueryClient(SimpleSign simpleSign,
-            String externalAttributeStoreUrl, String issuer, String destination) {
-        return new AttributeQueryClient(simpleSign, externalAttributeStoreUrl, issuer, destination);
+    protected AttributeQueryClient createAttributeQueryClient(Service service, String portName,
+            SimpleSign simpleSign, String externalAttributeStoreUrl, String issuer,
+            String destination) {
+        return new AttributeQueryClient(service,
+                QName.valueOf(portName),
+                simpleSign,
+                externalAttributeStoreUrl,
+                issuer,
+                destination);
+    }
+
+    /**
+     * Initializes the dynamic service when providing the wsdl location and its service name.
+     */
+    protected void initService() {
+        try {
+            service = Service.create(new URL(wsdlLocation), QName.valueOf(serviceName));
+        } catch (MalformedURLException e) {
+            throw new AttributeQueryException(
+                    "Unable to create the service for processing requests.",
+                    e);
+        }
+    }
+
+    public void setWsdlLocation(String wsdlLocation) {
+        this.wsdlLocation = wsdlLocation;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
+    }
+
+    public void setPortName(String portName) {
+        this.portName = portName;
     }
 
     public void setSimpleSign(SimpleSign simpleSign) {

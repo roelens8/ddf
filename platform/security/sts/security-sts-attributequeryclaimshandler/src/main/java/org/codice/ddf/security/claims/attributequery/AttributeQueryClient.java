@@ -13,19 +13,21 @@
  */
 package org.codice.ddf.security.claims.attributequery;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.io.StringReader;
 
-import javax.net.ssl.HttpsURLConnection;
+import javax.xml.namespace.QName;
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.ws.Dispatch;
+import javax.xml.ws.Service;
 
+import org.apache.commons.lang.StringUtils;
 import org.codice.ddf.platform.util.TransformerProperties;
 import org.codice.ddf.platform.util.XMLUtils;
-import org.opensaml.core.xml.XMLObjectBuilderFactory;
 import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
 import org.opensaml.core.xml.io.MarshallingException;
 import org.opensaml.core.xml.io.Unmarshaller;
@@ -43,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import ddf.security.samlp.SamlProtocol;
@@ -65,10 +68,9 @@ public class AttributeQueryClient {
     private static final String SAML2_UNKNOWN_PRINCIPAL =
             "urn:oasis:names:tc:SAML:2.0:status:UnknownPrincipal";
 
-    private static final String SOAP_ACTION = "http://www.oasis-open.org/committees/security";
+    private Service service;
 
-    private XMLObjectBuilderFactory builderFactory =
-            XMLObjectProviderRegistrySupport.getBuilderFactory();
+    private QName portName;
 
     private SimpleSign simpleSign;
 
@@ -78,24 +80,28 @@ public class AttributeQueryClient {
 
     private String destination;
 
-    public AttributeQueryClient(SimpleSign simpleSign, String externalAttributeStoreUrl,
-            String issuer, String destination) {
+    public AttributeQueryClient(Service service, QName portName, SimpleSign simpleSign,
+            String externalAttributeStoreUrl, String issuer, String destination) {
         LOGGER.debug("Initializing AttributeQueryClient.");
+
+        this.service = service;
+        this.portName = portName;
 
         this.simpleSign = simpleSign;
         this.externalAttributeStoreUrl = externalAttributeStoreUrl;
         this.issuer = issuer;
         this.destination = destination;
+
     }
 
     /**
-     * Creates the AttributeQuery request, the Https client to send the request, and returns
-     * the Response from the external attribute store.
+     * Query the external attribute store using and AttributeQuery
+     * request to retrieve an Assertion containing attributes
      *
      * @return Assertion of the response.
      */
-    public Assertion retrieveResponse(String username) {
-        return sendRequest(signSoapRequest(createRequest(username)));
+    public Assertion query(String username) {
+        return retrieveResponse(signSoapRequest(createRequest(username)));
     }
 
     private AttributeQuery createRequest(String username) {
@@ -161,50 +167,22 @@ public class AttributeQueryClient {
     }
 
     /**
-     * Sends the request to the external attribute store via an HTTPS Client.
+     * Retreives the response and returns the SAML Assertion.
      *
      * @param requestDocument of the request.
      * @return Assertion of the response or null if the response contains a bad status code.
      * @throws AttributeQueryException
      */
-    private Assertion sendRequest(Document requestDocument) throws AttributeQueryException {
-        URL url;
-        HttpURLConnection connection;
-        try {
-            url = new URL(externalAttributeStoreUrl);
-
-            connection = createHttpsUrlConnection(url);
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "text/xml");
-            connection.setRequestProperty("SOAPAction", SOAP_ACTION);
-            connection.setRequestProperty("Cache-Control", "no-cache, no-store");
-            connection.setRequestProperty("Pragma", "no-cache");
-            connection.setDoOutput(true);
-
-            TransformerProperties transformerProperties = new TransformerProperties();
-            transformerProperties.addOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-
-            try (DataOutputStream write = new DataOutputStream(connection.getOutputStream())) {
-                write.writeBytes(XMLUtils.format(requestDocument, transformerProperties));
-                write.flush();
-
-                if (!reportStatusCode(connection.getResponseCode())) {
-                    // If connection is unsuccessful, do not continue and return null.
-                    return null;
-                }
-            }
-        } catch (IOException e) {
-            LOGGER.error("Error when creating connection, unable to send request to {}",
-                    externalAttributeStoreUrl);
-            throw new AttributeQueryException("Could not create connection.", e);
-        }
+    private Assertion retrieveResponse(Document requestDocument) throws AttributeQueryException {
 
         try {
             Assertion assertion = null;
-            DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-            documentBuilderFactory.setNamespaceAware(true);
-            Document responseDocument = documentBuilderFactory.newDocumentBuilder()
-                    .parse(connection.getInputStream());
+            Document responseDocument = (responseDocument = sendRequest(requestDocument)) == null ?
+                    null :
+                    responseDocument;
+            if (responseDocument == null) {
+                return null;
+            }
 
             // Print Response
             if (LOGGER.isTraceEnabled()) {
@@ -234,12 +212,60 @@ public class AttributeQueryClient {
                 reportError(response.getStatus());
             }
             return assertion;
-        } catch (IOException | ParserConfigurationException | SAXException e) {
-            throw new AttributeQueryException("Unable to parse request string into an XML document.",
-                    e);
         } catch (UnmarshallingException e) {
             throw new AttributeQueryException("Unable to marshall Element to SAML Response.", e);
         }
+    }
+
+    /**
+     * Sends the request to the external attribute store via a Dispatch client.
+     *
+     * @param requestDocument of the request.
+     * @return Document of the response or null if the response contains a bad status code.
+     * @throws AttributeQueryException
+     */
+    protected Document sendRequest(Document requestDocument) {
+        TransformerProperties transformerProperties = new TransformerProperties();
+        transformerProperties.addOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+        String request = XMLUtils.format(requestDocument, transformerProperties);
+
+        StreamSource streamSource;
+        Dispatch<StreamSource> dispatch = createDispatch(service);
+        try {
+            streamSource = dispatch.invoke(new StreamSource(new StringReader(request)));
+        } catch (Exception e) {
+            throw new AttributeQueryException(String.format("Could not connect to: %s",
+                    this.externalAttributeStoreUrl), e);
+        }
+        String response = XMLUtils.format(streamSource, transformerProperties);
+        if (StringUtils.isBlank(response)) {
+            LOGGER.warn("Response is empty.");
+            return null;
+        }
+
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        documentBuilderFactory.setNamespaceAware(true);
+        DocumentBuilder documentBuilder;
+        Document responseDoc;
+        try {
+            documentBuilder = documentBuilderFactory.newDocumentBuilder();
+            responseDoc = documentBuilder.parse(new InputSource(new StringReader(response)));
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            throw new AttributeQueryException(
+                    "Unable to parse response string into an XML document.",
+                    e);
+        }
+        return responseDoc;
+    }
+
+    protected Dispatch<StreamSource> createDispatch(Service service) {
+        Dispatch<StreamSource> dispatch = service.createDispatch(portName,
+                StreamSource.class,
+                Service.Mode.MESSAGE);
+        dispatch.getRequestContext()
+                .put(Dispatch.ENDPOINT_ADDRESS_PROPERTY, externalAttributeStoreUrl);
+
+        return dispatch;
     }
 
     /**
@@ -247,7 +273,8 @@ public class AttributeQueryClient {
      *
      * @param status Status of response object.
      */
-    private void reportError(Status status) throws AttributeQueryException {
+
+    private void reportError(Status status) {
         switch (status.getStatusCode()
                 .getValue()) {
         case SAML2_UNKNOWN_ATTR_PROFILE:
@@ -275,55 +302,6 @@ public class AttributeQueryClient {
     }
 
     /**
-     * If the connection was successful, continue on, else do not.
-     *
-     * @param statusCode of the connection.
-     */
-    private boolean reportStatusCode(int statusCode) {
-        switch (statusCode) {
-        case HttpURLConnection.HTTP_OK:
-            LOGGER.debug("OK {}. Successful connection to: {}",
-                    statusCode,
-                    externalAttributeStoreUrl);
-            return true;
-        case HttpURLConnection.HTTP_UNAUTHORIZED:
-            LOGGER.warn("Unauthorized {}. Could not connect to: {}",
-                    statusCode,
-                    externalAttributeStoreUrl);
-            return false;
-        case HttpURLConnection.HTTP_NOT_FOUND:
-            LOGGER.warn("URL not found {} . Could not connect to: {}",
-                    statusCode,
-                    externalAttributeStoreUrl);
-            return false;
-        default:
-            LOGGER.warn("Status code not supported {}.", statusCode);
-            return false;
-        }
-    }
-
-    /**
-     * Creates an Http client for sending the request.
-     *
-     * @param url of the external attribute store.
-     * @return HttpsUrlConnection if protocol is https,
-     * else return HttpUrlConnection.
-     */
-    protected HttpURLConnection createHttpsUrlConnection(URL url) {
-        try {
-            if (url.getProtocol()
-                    .equalsIgnoreCase("https")) {
-                return (HttpsURLConnection) url.openConnection();
-            } else {
-                return (HttpURLConnection) url.openConnection();
-            }
-        } catch (IOException e) {
-            LOGGER.error("Unable to create HttpsUrlConnection", e);
-        }
-        return null;
-    }
-
-    /**
      * Prints the given XML.
      *
      * @param xmlNode Node to transform.
@@ -333,6 +311,14 @@ public class AttributeQueryClient {
         TransformerProperties transformerProperties = new TransformerProperties();
         transformerProperties.addOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
         LOGGER.trace(message, XMLUtils.format(xmlNode, transformerProperties));
+    }
+
+    public void setService(Service service) {
+        this.service = service;
+    }
+
+    public void setPortName(QName portName) {
+        this.portName = portName;
     }
 
     public void setSimpleSign(SimpleSign simpleSign) {

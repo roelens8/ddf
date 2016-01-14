@@ -18,7 +18,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -26,12 +26,13 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 
-import javax.net.ssl.HttpsURLConnection;
+import javax.xml.namespace.QName;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.ws.Dispatch;
+import javax.xml.ws.Service;
 
 import org.apache.wss4j.common.saml.OpenSAMLUtil;
 import org.codice.ddf.configuration.SystemBaseUrl;
@@ -39,7 +40,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensaml.core.config.InitializationException;
-import org.opensaml.core.config.InitializationService;
 import org.opensaml.saml.saml2.core.Assertion;
 
 import com.google.common.base.Charsets;
@@ -53,35 +53,24 @@ public class TestAttributeQueryClient {
 
     class AttributeQueryClientTest extends AttributeQueryClient {
 
-        AttributeQueryClientTest(SimpleSign simpleSign, String externalAttributeStoreUrl,
-                String issuer, String destination) {
-            super(simpleSign, externalAttributeStoreUrl, issuer, destination);
+        AttributeQueryClientTest(Service service, QName portName, SimpleSign simpleSign,
+                String externalAttributeStoreUrl, String issuer, String destination) {
+            super(service, portName, simpleSign, externalAttributeStoreUrl, issuer, destination);
         }
 
         @Override
-        protected HttpsURLConnection createHttpsUrlConnection(URL url) {
-            HttpsURLConnection httpsURLConnection = mock(HttpsURLConnection.class);
-            DataOutputStream dataOutputStream = mock(DataOutputStream.class);
-            InputStream inputStream = new ByteArrayInputStream(cannedResponse.getBytes());
-            try {
-                if (!outputStreamIoException) {
-                    when(httpsURLConnection.getOutputStream()).thenReturn(dataOutputStream);
-                } else {
-                    when(httpsURLConnection.getOutputStream()).thenThrow(new IOException(
-                            "Could not get the connection's OutputStream."));
-                }
-                when(httpsURLConnection.getResponseCode()).thenReturn(responseCode);
-
-                if (!inputStreamIoException) {
-                    when(httpsURLConnection.getInputStream()).thenReturn(inputStream);
-                } else {
-                    when(httpsURLConnection.getInputStream()).thenThrow(new IOException(
-                            "Could not get the connection's InputStream."));
-                }
-            } catch (IOException e) {
-                fail("Unable to create HttpsUrlConnection.");
+        protected Dispatch<StreamSource> createDispatch(Service service) {
+            Dispatch<StreamSource> dispatch = mock(Dispatch.class);
+            InputStream inputStream;
+            if (!isInvalidRequest) {
+                inputStream = new ByteArrayInputStream(cannedResponse.getBytes());
+            } else {
+                inputStream = new ByteArrayInputStream("<test>test<test/".getBytes());
             }
-            return httpsURLConnection;
+            StreamSource streamSource = new StreamSource(inputStream);
+            when(dispatch.invoke(any(StreamSource.class))).thenReturn(streamSource);
+
+            return dispatch;
         }
     }
 
@@ -102,11 +91,11 @@ public class TestAttributeQueryClient {
 
     private String username = "admin";
 
-    private boolean inputStreamIoException = false;
+    private boolean isInvalidRequest = false;
 
-    private boolean outputStreamIoException = false;
+    private Service service;
 
-    private int responseCode = 200;
+    private QName portName;
 
     private AttributeQueryClient attributeQueryClient;
 
@@ -121,11 +110,13 @@ public class TestAttributeQueryClient {
     @BeforeClass
     public static void init() throws InitializationException {
         OpenSAMLUtil.initSamlEngine();
-        InitializationService.initialize();
     }
 
     @Before
     public void setUp() throws IOException {
+        service = mock(Service.class);
+        portName = new QName("test", "test");
+
         encryptionService = mock(EncryptionService.class);
         systemCrypto = new SystemCrypto("encryption.properties",
                 "signature.properties",
@@ -133,10 +124,14 @@ public class TestAttributeQueryClient {
         SimpleSign simpleSign = new SimpleSign(systemCrypto);
         spySimpleSign = spy(simpleSign);
 
-        attributeQueryClient = new AttributeQueryClientTest(spySimpleSign,
+        attributeQueryClient = new AttributeQueryClientTest(service,
+                portName,
+                spySimpleSign,
                 SystemBaseUrl.getBaseUrl(),
                 ISSUER,
                 DESTINATION);
+        attributeQueryClient.setService(service);
+        attributeQueryClient.setPortName(portName);
         attributeQueryClient.setSimpleSign(spySimpleSign);
         attributeQueryClient.setExternalAttributeStoreUrl(SystemBaseUrl.getBaseUrl());
         attributeQueryClient.setIssuer(ISSUER);
@@ -148,7 +143,7 @@ public class TestAttributeQueryClient {
 
     @Test
     public void testRetrieveResponse() {
-        Assertion assertion = attributeQueryClient.retrieveResponse(username);
+        Assertion assertion = attributeQueryClient.query(username);
 
         assertThat(assertion, is(notNullValue()));
         assertThat(assertion.getIssuer()
@@ -160,33 +155,12 @@ public class TestAttributeQueryClient {
     }
 
     @Test
-    public void testRetrieveResponseUnauthorizedStatusCode() {
-        responseCode = 401;
-
-        assertThat(attributeQueryClient.retrieveResponse(username), is(nullValue()));
-    }
-
-    @Test
-    public void testRetrieveResponseNotFoundStatusCode() {
-        responseCode = 404;
-
-        assertThat(attributeQueryClient.retrieveResponse(username), is(nullValue()));
-    }
-
-    @Test
-    public void testRetrieveResponseUnknownStatusCode() {
-        responseCode = -1;
-
-        assertThat(attributeQueryClient.retrieveResponse(username), is(nullValue()));
-    }
-
-    @Test
     public void testRetrieveResponseUnknownAttrProfile() throws IOException {
         cannedResponse = Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
                 Charsets.UTF_8)
                 .replaceAll(SAML2_SUCCESS, SAML2_UNKNOWN_ATTR_PROFILE);
 
-        assertThat(attributeQueryClient.retrieveResponse(username), is(nullValue()));
+        assertThat(attributeQueryClient.query(username), is(nullValue()));
     }
 
     @Test
@@ -195,7 +169,7 @@ public class TestAttributeQueryClient {
                 Charsets.UTF_8)
                 .replaceAll(SAML2_SUCCESS, SAML2_INVALID_ATTR_NAME_VALUE);
 
-        assertThat(attributeQueryClient.retrieveResponse(username), is(nullValue()));
+        assertThat(attributeQueryClient.query(username), is(nullValue()));
     }
 
     @Test
@@ -204,7 +178,7 @@ public class TestAttributeQueryClient {
                 Charsets.UTF_8)
                 .replaceAll(SAML2_SUCCESS, SAML2_UNKNOWN_PRINCIPAL);
 
-        assertThat(attributeQueryClient.retrieveResponse(username), is(nullValue()));
+        assertThat(attributeQueryClient.query(username), is(nullValue()));
     }
 
     @Test
@@ -213,21 +187,14 @@ public class TestAttributeQueryClient {
                 Charsets.UTF_8)
                 .replaceAll(SAML2_SUCCESS, "Invalid Response");
 
-        assertThat(attributeQueryClient.retrieveResponse(username), is(nullValue()));
+        assertThat(attributeQueryClient.query(username), is(nullValue()));
     }
 
     @Test(expected = AttributeQueryException.class)
-    public void testRetrieveResponseConnectionGetInputStreamIOException() {
-        outputStreamIoException = true;
+    public void testRetrieveResponseInvalidRequest() {
+        isInvalidRequest = true;
 
-        attributeQueryClient.retrieveResponse(username);
-    }
-
-    @Test(expected = AttributeQueryException.class)
-    public void testRetrieveResponseConnectionGetOutputStreamIOException() {
-        inputStreamIoException = true;
-
-        attributeQueryClient.retrieveResponse(username);
+        attributeQueryClient.query(username);
     }
 
     @Test(expected = AttributeQueryException.class)
@@ -236,6 +203,6 @@ public class TestAttributeQueryClient {
         doThrow(new SimpleSign.SignatureException()).when(spySimpleSign)
                 .signSamlObject(anyObject());
 
-        attributeQueryClient.retrieveResponse(username);
+        attributeQueryClient.query(username);
     }
 }

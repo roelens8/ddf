@@ -36,6 +36,9 @@
           class="org.codice.ddf.security.claims.attributequery.AttributeQueryClaimsHandler">
         <cm:managed-properties persistent-id="ddf.security.sts.attributequery"
                                update-strategy="container-managed"/>
+        <property name="wsdlLocation" value=""/>
+        <property name="serviceName" value=""/>
+        <property name="portName" value=""/>
         <property name="externalAttributeStoreUrl" value=""/>
         <property name="attributeMapLocation" value=""/>
         <property name="simpleSign" ref="simpleSign"/>
