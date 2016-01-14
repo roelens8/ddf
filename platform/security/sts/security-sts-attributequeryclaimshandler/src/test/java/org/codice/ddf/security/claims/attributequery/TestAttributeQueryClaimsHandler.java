@@ -19,6 +19,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
@@ -28,6 +29,8 @@ import java.net.URISyntaxException;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.xml.ws.Service;
 
 import org.apache.cxf.rt.security.claims.Claim;
 import org.apache.cxf.rt.security.claims.ClaimCollection;
@@ -40,7 +43,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensaml.core.config.InitializationException;
-import org.opensaml.core.config.InitializationService;
 import org.opensaml.core.xml.XMLObject;
 import org.opensaml.saml.saml2.core.Assertion;
 import org.opensaml.saml.saml2.core.Response;
@@ -59,11 +61,11 @@ public class TestAttributeQueryClaimsHandler {
 
     private static final String ISSUER = "testIssuer";
 
+    private AttributeQueryClaimsHandlerTest spyAttributeQueryClaimsHandler;
+
     private String username = "CN=testCN, OU=testOU, O=testO, L=testL, ST=testST, C=testC";
 
     private String responseState = "ValidResponse";
-
-    private AttributeQueryClaimsHandlerTest attributeQueryClaimsHandler;
 
     private List<String> supportedClaims;
 
@@ -78,8 +80,14 @@ public class TestAttributeQueryClaimsHandler {
     class AttributeQueryClaimsHandlerTest extends AttributeQueryClaimsHandler {
 
         @Override
-        protected AttributeQueryClient createAttributeQueryClient(SimpleSign simpleSign,
-                String externalAttributeStoreUrl, String issuer, String destination) {
+        protected void initService() {
+            // Do nothing.
+        }
+
+        @Override
+        protected AttributeQueryClient createAttributeQueryClient(Service service, String portName,
+                SimpleSign simpleSign, String externalAttributeStoreUrl, String issuer,
+                String destination) {
 
             AttributeQueryClient attributeQueryClient = null;
             Document responseDoc;
@@ -98,11 +106,11 @@ public class TestAttributeQueryClaimsHandler {
 
                 attributeQueryClient = mock(AttributeQueryClient.class);
                 if (responseState.equalsIgnoreCase("ValidResponse")) {
-                    when(attributeQueryClient.retrieveResponse(anyString())).thenReturn(assertion);
+                    when(attributeQueryClient.query(anyString())).thenReturn(assertion);
                 } else if (responseState.equalsIgnoreCase("NullResponse")) {
-                    when(attributeQueryClient.retrieveResponse(anyString())).thenReturn(null);
+                    when(attributeQueryClient.query(anyString())).thenReturn(null);
                 } else {
-                    when(attributeQueryClient.retrieveResponse(anyString())).thenThrow(new AttributeQueryException(
+                    when(attributeQueryClient.query(anyString())).thenThrow(new AttributeQueryException(
                             "Invalid Response"));
                 }
 
@@ -117,11 +125,11 @@ public class TestAttributeQueryClaimsHandler {
     @BeforeClass
     public static void init() throws InitializationException {
         OpenSAMLUtil.initSamlEngine();
-        InitializationService.initialize();
     }
 
     @Before
     public void setUp() throws IOException {
+
         encryptionService = mock(EncryptionService.class);
         systemCrypto = new SystemCrypto("encryption.properties",
                 "signature.properties",
@@ -133,13 +141,19 @@ public class TestAttributeQueryClaimsHandler {
         supportedClaims.add("NameIdentifier");
         supportedClaims.add("Email");
 
-        attributeQueryClaimsHandler = new AttributeQueryClaimsHandlerTest();
-        attributeQueryClaimsHandler.setSimpleSign(simpleSign);
-        attributeQueryClaimsHandler.setSupportedClaims(supportedClaims);
-        attributeQueryClaimsHandler.setExternalAttributeStoreUrl(SystemBaseUrl.getBaseUrl());
-        attributeQueryClaimsHandler.setIssuer(ISSUER);
-        attributeQueryClaimsHandler.setDestination(DESTINATION);
-        attributeQueryClaimsHandler.setAttributeMapLocation(TestAttributeQueryClaimsHandler.class.getClassLoader()
+        AttributeQueryClaimsHandlerTest attributeQueryClaimsHandler =
+                new AttributeQueryClaimsHandlerTest();
+        spyAttributeQueryClaimsHandler = spy(attributeQueryClaimsHandler);
+
+        spyAttributeQueryClaimsHandler.setWsdlLocation("wsdlLocation");
+        spyAttributeQueryClaimsHandler.setServiceName("serviceName");
+        spyAttributeQueryClaimsHandler.setPortName("portName");
+        spyAttributeQueryClaimsHandler.setSimpleSign(simpleSign);
+        spyAttributeQueryClaimsHandler.setSupportedClaims(supportedClaims);
+        spyAttributeQueryClaimsHandler.setExternalAttributeStoreUrl(SystemBaseUrl.getBaseUrl());
+        spyAttributeQueryClaimsHandler.setIssuer(ISSUER);
+        spyAttributeQueryClaimsHandler.setDestination(DESTINATION);
+        spyAttributeQueryClaimsHandler.setAttributeMapLocation(TestAttributeQueryClaimsHandler.class.getClassLoader()
                 .getResource("attributeMap.properties")
                 .getPath());
 
@@ -202,7 +216,7 @@ public class TestAttributeQueryClaimsHandler {
 
     @Test
     public void testSupportedClaimsTypes() {
-        List<URI> supportedClaimTypes = attributeQueryClaimsHandler.getSupportedClaimTypes();
+        List<URI> supportedClaimTypes = spyAttributeQueryClaimsHandler.getSupportedClaimTypes();
 
         assertThat(supportedClaimTypes.size(), is(equalTo(3)));
         assertThat(supportedClaimTypes.get(0)
@@ -217,7 +231,7 @@ public class TestAttributeQueryClaimsHandler {
     public void testSupportedClaimsTypesWithBadURI() {
         supportedClaims.add("Bad: URI");
 
-        assertThat(attributeQueryClaimsHandler.getSupportedClaimTypes()
+        assertThat(spyAttributeQueryClaimsHandler.getSupportedClaimTypes()
                 .size(), is(equalTo(3)));
     }
 
@@ -237,6 +251,7 @@ public class TestAttributeQueryClaimsHandler {
         when(principal.getName()).thenReturn(username);
         when(claimsParameters.getPrincipal()).thenReturn(principal);
 
-        return attributeQueryClaimsHandler.retrieveClaimValues(claimCollection, claimsParameters);
+        return spyAttributeQueryClaimsHandler.retrieveClaimValues(claimCollection,
+                claimsParameters);
     }
 }
