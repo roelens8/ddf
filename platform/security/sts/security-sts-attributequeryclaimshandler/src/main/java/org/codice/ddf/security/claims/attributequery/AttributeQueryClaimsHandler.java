@@ -13,16 +13,16 @@
  */
 package org.codice.ddf.security.claims.attributequery;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import javax.xml.namespace.QName;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.ws.Dispatch;
 import javax.xml.ws.Service;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -54,8 +54,6 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
     protected static final String ERROR_RETRIEVING_ATTRIBUTES_SEC_LOG =
             "Error retrieving attributes from external attribute store [%s] for DN [%s]. ";
 
-    private Service service;
-
     private String wsdlLocation;
 
     private String serviceName;
@@ -77,9 +75,7 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
     protected String destination;
 
     public AttributeQueryClaimsHandler() {
-        LOGGER.debug("Starting AttributeQueryClaimsHandler");
-
-        initService();
+        LOGGER.debug("Creating {}", this.getClass());
     }
 
     /**
@@ -157,9 +153,7 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
 
         Assertion assertion;
         try {
-            assertion = createAttributeQueryClient(service,
-                    portName,
-                    simpleSign,
+            assertion = createAttributeQueryClient(simpleSign,
                     externalAttributeStoreUrl,
                     issuer,
                     destination).query(nameId);
@@ -232,8 +226,7 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
     }
 
     /**
-     * Creates a client for sending an AttributeQuery
-     * request to a specified external attribute store.
+     * Creates a client to interface with an external attribute store via an AttributeQuery request.
      *
      * @param simpleSign                to create signature for request
      * @param externalAttributeStoreUrl endpoint of external web service
@@ -241,11 +234,9 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
      * @param destination               of request
      * @return AttributeQueryClient
      */
-    protected AttributeQueryClient createAttributeQueryClient(Service service, String portName,
-            SimpleSign simpleSign, String externalAttributeStoreUrl, String issuer,
-            String destination) {
-        return new AttributeQueryClient(service,
-                QName.valueOf(portName),
+    protected AttributeQueryClient createAttributeQueryClient(SimpleSign simpleSign,
+            String externalAttributeStoreUrl, String issuer, String destination) {
+        return new AttributeQueryClient(createDispatcher(createService()),
                 simpleSign,
                 externalAttributeStoreUrl,
                 issuer,
@@ -253,16 +244,31 @@ public class AttributeQueryClaimsHandler implements ClaimsHandler {
     }
 
     /**
-     * Initializes the dynamic service when providing the wsdl location and its service name.
+     * Creates a dynamic service from the provided wsdl location.
      */
-    protected void initService() {
-        try {
-            service = Service.create(new URL(wsdlLocation), QName.valueOf(serviceName));
-        } catch (MalformedURLException e) {
-            throw new AttributeQueryException(
-                    "Unable to create the service for processing requests.",
-                    e);
+    protected Service createService() {
+        Service service = null;
+        if (StringUtils.isNotBlank(wsdlLocation) && StringUtils.isNotBlank(serviceName)) {
+            service = Service.create(this.getClass()
+                    .getClassLoader()
+                    .getResource(wsdlLocation), QName.valueOf(serviceName));
         }
+        return service;
+    }
+
+    /**
+     * Creates a dispatcher for dispatching requests.
+     */
+    protected Dispatch<StreamSource> createDispatcher(Service service) {
+        Dispatch<StreamSource> dispatch = null;
+        if (service != null) {
+            dispatch = service.createDispatch(QName.valueOf(portName),
+                    StreamSource.class,
+                    Service.Mode.MESSAGE);
+            dispatch.getRequestContext()
+                    .put(Dispatch.ENDPOINT_ADDRESS_PROPERTY, externalAttributeStoreUrl);
+        }
+        return dispatch;
     }
 
     public void setWsdlLocation(String wsdlLocation) {

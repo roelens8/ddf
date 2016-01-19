@@ -25,14 +25,14 @@
 
         <AD name="Service Name" id="serviceName" required="true"
             type="String"
-            default="{http://ctis.dmdc.osd.mil/eias}AttributeService"
-            description="Service name from the WSDL. Example Format: {NamespaceURI}ServiceName">
+            default=""
+            description="Service name from the WSDL. Example format: {NamespaceURI}ServiceName">
         </AD>
 
         <AD name="Port Name" id="portName" required="true"
             type="String"
-            default="{http://ctis.dmdc.osd.mil/eias}AttributeService"
-            description="Port name from the WSDL. Example Format: {NamespaceURI}PortName">
+            default=""
+            description="Port name that is supported by the service. Example format: {NamespaceURI}PortName">
         </AD>
 
         <AD name="External Attribute Store URL" id="externalAttributeStoreUrl" required="true"

@@ -29,10 +29,8 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-import javax.xml.namespace.QName;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.ws.Dispatch;
-import javax.xml.ws.Service;
 
 import org.apache.wss4j.common.saml.OpenSAMLUtil;
 import org.codice.ddf.configuration.SystemBaseUrl;
@@ -51,29 +49,6 @@ import ddf.security.samlp.SystemCrypto;
 
 public class TestAttributeQueryClient {
 
-    class AttributeQueryClientTest extends AttributeQueryClient {
-
-        AttributeQueryClientTest(Service service, QName portName, SimpleSign simpleSign,
-                String externalAttributeStoreUrl, String issuer, String destination) {
-            super(service, portName, simpleSign, externalAttributeStoreUrl, issuer, destination);
-        }
-
-        @Override
-        protected Dispatch<StreamSource> createDispatch(Service service) {
-            Dispatch<StreamSource> dispatch = mock(Dispatch.class);
-            InputStream inputStream;
-            if (!isInvalidRequest) {
-                inputStream = new ByteArrayInputStream(cannedResponse.getBytes());
-            } else {
-                inputStream = new ByteArrayInputStream("<test>test<test/".getBytes());
-            }
-            StreamSource streamSource = new StreamSource(inputStream);
-            when(dispatch.invoke(any(StreamSource.class))).thenReturn(streamSource);
-
-            return dispatch;
-        }
-    }
-
     private static final String SAML2_SUCCESS = "urn:oasis:names:tc:SAML:2.0:status:Success";
 
     private static final String SAML2_UNKNOWN_ATTR_PROFILE =
@@ -91,11 +66,7 @@ public class TestAttributeQueryClient {
 
     private String username = "admin";
 
-    private boolean isInvalidRequest = false;
-
-    private Service service;
-
-    private QName portName;
+    private Dispatch<StreamSource> dispatch;
 
     private AttributeQueryClient attributeQueryClient;
 
@@ -114,24 +85,19 @@ public class TestAttributeQueryClient {
 
     @Before
     public void setUp() throws IOException {
-        service = mock(Service.class);
-        portName = new QName("test", "test");
-
+        dispatch = mock(Dispatch.class);
         encryptionService = mock(EncryptionService.class);
         systemCrypto = new SystemCrypto("encryption.properties",
                 "signature.properties",
                 encryptionService);
         SimpleSign simpleSign = new SimpleSign(systemCrypto);
         spySimpleSign = spy(simpleSign);
-
-        attributeQueryClient = new AttributeQueryClientTest(service,
-                portName,
+        attributeQueryClient = new AttributeQueryClient(dispatch,
                 spySimpleSign,
                 SystemBaseUrl.getBaseUrl(),
                 ISSUER,
                 DESTINATION);
-        attributeQueryClient.setService(service);
-        attributeQueryClient.setPortName(portName);
+        attributeQueryClient.setDispatch(dispatch);
         attributeQueryClient.setSimpleSign(spySimpleSign);
         attributeQueryClient.setExternalAttributeStoreUrl(SystemBaseUrl.getBaseUrl());
         attributeQueryClient.setIssuer(ISSUER);
@@ -143,8 +109,9 @@ public class TestAttributeQueryClient {
 
     @Test
     public void testRetrieveResponse() {
-        Assertion assertion = attributeQueryClient.query(username);
+        setResponse(cannedResponse, false);
 
+        Assertion assertion = attributeQueryClient.query(username);
         assertThat(assertion, is(notNullValue()));
         assertThat(assertion.getIssuer()
                 .getValue(), is(equalTo("localhost")));
@@ -156,43 +123,57 @@ public class TestAttributeQueryClient {
 
     @Test
     public void testRetrieveResponseUnknownAttrProfile() throws IOException {
-        cannedResponse = Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
+        setResponse(Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
                 Charsets.UTF_8)
-                .replaceAll(SAML2_SUCCESS, SAML2_UNKNOWN_ATTR_PROFILE);
+                .replaceAll(SAML2_SUCCESS, SAML2_UNKNOWN_ATTR_PROFILE), false);
 
         assertThat(attributeQueryClient.query(username), is(nullValue()));
     }
 
     @Test
     public void testRetrieveResponseInvalidAttrNameOrValue() throws IOException {
-        cannedResponse = Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
+        setResponse(Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
                 Charsets.UTF_8)
-                .replaceAll(SAML2_SUCCESS, SAML2_INVALID_ATTR_NAME_VALUE);
+                .replaceAll(SAML2_SUCCESS, SAML2_INVALID_ATTR_NAME_VALUE), false);
 
         assertThat(attributeQueryClient.query(username), is(nullValue()));
     }
 
     @Test
     public void testRetrieveResponseUnknownPrincipal() throws IOException {
-        cannedResponse = Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
+        setResponse(Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
                 Charsets.UTF_8)
-                .replaceAll(SAML2_SUCCESS, SAML2_UNKNOWN_PRINCIPAL);
+                .replaceAll(SAML2_SUCCESS, SAML2_UNKNOWN_PRINCIPAL), false);
 
         assertThat(attributeQueryClient.query(username), is(nullValue()));
     }
 
     @Test
     public void testRetrieveResponseInvalidResponse() throws IOException {
-        cannedResponse = Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
+        setResponse(Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
                 Charsets.UTF_8)
-                .replaceAll(SAML2_SUCCESS, "Invalid Response");
+                .replaceAll(SAML2_SUCCESS, "Invalid Response"), false);
+
+        assertThat(attributeQueryClient.query(username), is(nullValue()));
+    }
+
+    @Test
+    public void testRetrieveResponseEmptyResponse() throws IOException {
+        setResponse("", false);
 
         assertThat(attributeQueryClient.query(username), is(nullValue()));
     }
 
     @Test(expected = AttributeQueryException.class)
-    public void testRetrieveResponseInvalidRequest() {
-        isInvalidRequest = true;
+    public void testRetrieveResponseMalformedResponse() {
+        setResponse("<test>test<test/", false);
+
+        attributeQueryClient.query(username);
+    }
+
+    @Test(expected = AttributeQueryException.class)
+    public void testRetrieveResponseDispatchException() {
+        setResponse(cannedResponse, true);
 
         attributeQueryClient.query(username);
     }
@@ -204,5 +185,16 @@ public class TestAttributeQueryClient {
                 .signSamlObject(anyObject());
 
         attributeQueryClient.query(username);
+    }
+
+    private void setResponse(String response, boolean throwException) {
+        InputStream inputStream = new ByteArrayInputStream(response.getBytes());
+        StreamSource streamSource = new StreamSource(inputStream);
+
+        if (!throwException) {
+            when(dispatch.invoke(any(StreamSource.class))).thenReturn(streamSource);
+        } else {
+            when(dispatch.invoke(any(StreamSource.class))).thenThrow(Exception.class);
+        }
     }
 }

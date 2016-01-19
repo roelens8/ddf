@@ -18,6 +18,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -30,6 +31,8 @@ import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.ws.Dispatch;
 import javax.xml.ws.Service;
 
 import org.apache.cxf.rt.security.claims.Claim;
@@ -63,6 +66,10 @@ public class TestAttributeQueryClaimsHandler {
 
     private AttributeQueryClaimsHandlerTest spyAttributeQueryClaimsHandler;
 
+    private Service service;
+
+    private Dispatch<StreamSource> dispatch;
+
     private String username = "CN=testCN, OU=testOU, O=testO, L=testL, ST=testST, C=testC";
 
     private String responseState = "ValidResponse";
@@ -80,14 +87,8 @@ public class TestAttributeQueryClaimsHandler {
     class AttributeQueryClaimsHandlerTest extends AttributeQueryClaimsHandler {
 
         @Override
-        protected void initService() {
-            // Do nothing.
-        }
-
-        @Override
-        protected AttributeQueryClient createAttributeQueryClient(Service service, String portName,
-                SimpleSign simpleSign, String externalAttributeStoreUrl, String issuer,
-                String destination) {
+        protected AttributeQueryClient createAttributeQueryClient(SimpleSign simpleSign,
+                String externalAttributeStoreUrl, String issuer, String destination) {
 
             AttributeQueryClient attributeQueryClient = null;
             Document responseDoc;
@@ -129,7 +130,8 @@ public class TestAttributeQueryClaimsHandler {
 
     @Before
     public void setUp() throws IOException {
-
+        service = mock(Service.class);
+        dispatch = (Dispatch<StreamSource>) mock(Dispatch.class);
         encryptionService = mock(EncryptionService.class);
         systemCrypto = new SystemCrypto("encryption.properties",
                 "signature.properties",
@@ -144,7 +146,6 @@ public class TestAttributeQueryClaimsHandler {
         AttributeQueryClaimsHandlerTest attributeQueryClaimsHandler =
                 new AttributeQueryClaimsHandlerTest();
         spyAttributeQueryClaimsHandler = spy(attributeQueryClaimsHandler);
-
         spyAttributeQueryClaimsHandler.setWsdlLocation("wsdlLocation");
         spyAttributeQueryClaimsHandler.setServiceName("serviceName");
         spyAttributeQueryClaimsHandler.setPortName("portName");
@@ -156,6 +157,11 @@ public class TestAttributeQueryClaimsHandler {
         spyAttributeQueryClaimsHandler.setAttributeMapLocation(TestAttributeQueryClaimsHandler.class.getClassLoader()
                 .getResource("attributeMap.properties")
                 .getPath());
+
+        doReturn(service).when(spyAttributeQueryClaimsHandler)
+                .createService();
+        doReturn(dispatch).when(spyAttributeQueryClaimsHandler)
+                .createDispatcher(service);
 
         cannedResponse = Resources.toString(Resources.getResource(getClass(), "/SAMLResponse.xml"),
                 Charsets.UTF_8);

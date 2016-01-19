@@ -16,14 +16,12 @@ package org.codice.ddf.security.claims.attributequery;
 import java.io.IOException;
 import java.io.StringReader;
 
-import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.ws.Dispatch;
-import javax.xml.ws.Service;
 
 import org.apache.commons.lang.StringUtils;
 import org.codice.ddf.platform.util.TransformerProperties;
@@ -68,9 +66,7 @@ public class AttributeQueryClient {
     private static final String SAML2_UNKNOWN_PRINCIPAL =
             "urn:oasis:names:tc:SAML:2.0:status:UnknownPrincipal";
 
-    private Service service;
-
-    private QName portName;
+    private Dispatch<StreamSource> dispatch;
 
     private SimpleSign simpleSign;
 
@@ -80,13 +76,10 @@ public class AttributeQueryClient {
 
     private String destination;
 
-    public AttributeQueryClient(Service service, QName portName, SimpleSign simpleSign,
+    public AttributeQueryClient(Dispatch<StreamSource> dispatch, SimpleSign simpleSign,
             String externalAttributeStoreUrl, String issuer, String destination) {
         LOGGER.debug("Initializing AttributeQueryClient.");
-
-        this.service = service;
-        this.portName = portName;
-
+        this.dispatch = dispatch;
         this.simpleSign = simpleSign;
         this.externalAttributeStoreUrl = externalAttributeStoreUrl;
         this.issuer = issuer;
@@ -95,8 +88,7 @@ public class AttributeQueryClient {
     }
 
     /**
-     * Query the external attribute store using and AttributeQuery
-     * request to retrieve an Assertion containing attributes
+     * Query the external attribute store using an AttributeQuery request.
      *
      * @return Assertion of the response.
      */
@@ -118,7 +110,7 @@ public class AttributeQueryClient {
     }
 
     /**
-     * Signs SOAP message of an AttributeQuery.
+     * Signs the SOAP message of an AttributeQuery.
      *
      * @param attributeQuery request to be signed.
      * @return Document of the AttributeQuery.
@@ -167,19 +159,16 @@ public class AttributeQueryClient {
     }
 
     /**
-     * Retreives the response and returns the SAML Assertion.
+     * Retrieves the response and returns the SAML Assertion.
      *
      * @param requestDocument of the request.
-     * @return Assertion of the response or null if the response contains a bad status code.
+     * @return Assertion of the response or null if the response is empty.
      * @throws AttributeQueryException
      */
     private Assertion retrieveResponse(Document requestDocument) throws AttributeQueryException {
-
+        Assertion assertion = null;
         try {
-            Assertion assertion = null;
-            Document responseDocument = (responseDocument = sendRequest(requestDocument)) == null ?
-                    null :
-                    responseDocument;
+            Document responseDocument = sendRequest(requestDocument);
             if (responseDocument == null) {
                 return null;
             }
@@ -221,7 +210,7 @@ public class AttributeQueryClient {
      * Sends the request to the external attribute store via a Dispatch client.
      *
      * @param requestDocument of the request.
-     * @return Document of the response or null if the response contains a bad status code.
+     * @return Document of the response or null if the response is empty.
      * @throws AttributeQueryException
      */
     protected Document sendRequest(Document requestDocument) {
@@ -230,7 +219,6 @@ public class AttributeQueryClient {
         String request = XMLUtils.format(requestDocument, transformerProperties);
 
         StreamSource streamSource;
-        Dispatch<StreamSource> dispatch = createDispatch(service);
         try {
             streamSource = dispatch.invoke(new StreamSource(new StringReader(request)));
         } catch (Exception e) {
@@ -256,16 +244,6 @@ public class AttributeQueryClient {
                     e);
         }
         return responseDoc;
-    }
-
-    protected Dispatch<StreamSource> createDispatch(Service service) {
-        Dispatch<StreamSource> dispatch = service.createDispatch(portName,
-                StreamSource.class,
-                Service.Mode.MESSAGE);
-        dispatch.getRequestContext()
-                .put(Dispatch.ENDPOINT_ADDRESS_PROPERTY, externalAttributeStoreUrl);
-
-        return dispatch;
     }
 
     /**
@@ -313,12 +291,8 @@ public class AttributeQueryClient {
         LOGGER.trace(message, XMLUtils.format(xmlNode, transformerProperties));
     }
 
-    public void setService(Service service) {
-        this.service = service;
-    }
-
-    public void setPortName(QName portName) {
-        this.portName = portName;
+    public void setDispatch(Dispatch<StreamSource> dispatch) {
+        this.dispatch = dispatch;
     }
 
     public void setSimpleSign(SimpleSign simpleSign) {
