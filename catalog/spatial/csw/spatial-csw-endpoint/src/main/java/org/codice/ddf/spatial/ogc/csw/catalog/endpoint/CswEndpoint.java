@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import javax.activation.MimeType;
+import javax.activation.MimeTypeParseException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -105,16 +107,24 @@ import ddf.catalog.operation.CreateResponse;
 import ddf.catalog.operation.DeleteResponse;
 import ddf.catalog.operation.QueryRequest;
 import ddf.catalog.operation.QueryResponse;
+import ddf.catalog.operation.ResourceRequest;
+import ddf.catalog.operation.ResourceResponse;
 import ddf.catalog.operation.UpdateRequest;
 import ddf.catalog.operation.UpdateResponse;
 import ddf.catalog.operation.impl.CreateRequestImpl;
 import ddf.catalog.operation.impl.DeleteRequestImpl;
 import ddf.catalog.operation.impl.QueryImpl;
 import ddf.catalog.operation.impl.QueryRequestImpl;
+import ddf.catalog.operation.impl.ResourceRequestById;
 import ddf.catalog.operation.impl.UpdateRequestImpl;
+import ddf.catalog.resource.Resource;
+import ddf.catalog.resource.ResourceNotFoundException;
+import ddf.catalog.resource.ResourceNotSupportedException;
+import ddf.catalog.resource.impl.ResourceImpl;
 import ddf.catalog.source.IngestException;
 import ddf.catalog.source.SourceUnavailableException;
 import ddf.catalog.source.UnsupportedQueryException;
+import ddf.catalog.transform.CatalogTransformerException;
 import net.opengis.cat.csw.v_2_0_2.BriefRecordType;
 import net.opengis.cat.csw.v_2_0_2.CapabilitiesType;
 import net.opengis.cat.csw.v_2_0_2.DescribeRecordResponseType;
@@ -395,7 +405,7 @@ public class CswEndpoint implements Csw {
 
         validateOutputFormat(request.getOutputFormat());
 
-        validateOutputSchema(request.getOutputSchema());
+//        validateOutputSchema(request.getOutputSchema());
 
         if (request.getAbstractQuery() != null) {
             if (!request.getAbstractQuery().getValue().getClass().equals(QueryType.class)) {
@@ -456,19 +466,62 @@ public class CswEndpoint implements Csw {
     @Override
     @POST
     @Consumes({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
-    @Produces({MediaType.TEXT_XML, MediaType.APPLICATION_XML})
     public CswRecordCollection getRecordById(GetRecordByIdType request) throws CswException {
         if (request == null) {
             throw new CswException("GetRecordByIdRequest request is null");
         }
 
-        validateOutputFormat(request.getOutputFormat());
-
-        validateOutputSchema(request.getOutputSchema());
+//        validateOutputFormat(request.getOutputFormat());
+//
+//        validateOutputSchema(request.getOutputSchema());
 
         if (!request.getId().isEmpty()) {
             LOGGER.debug("{} is attempting to retrieve records: {}", request.getService(),
                     request.getId());
+
+
+            if (request.getOutputSchema().equals("productData")) {
+                if (request.getId().size() > 1) {
+                    throw new CswException("Can not retrieve product for more than one record.");
+                }
+                final ResourceRequestById resourceRequest = new ResourceRequestById(
+                        request.getId().get(0));
+
+                ResourceResponse resourceResponse = null;
+                try {
+                    resourceResponse = framework.getLocalResource(resourceRequest);
+                } catch (IOException | ResourceNotFoundException | ResourceNotSupportedException e) {
+                    throw new CswException(String.format("Could not get product data for id: %s",
+                            request.getId()));
+                }
+
+                if (resourceResponse == null) {
+                    throw new CswException(String.format("Could not get product data for id: %s",
+                    request.getId()));
+                }
+                Resource resource = resourceResponse.getResource();
+                MimeType mimeType = resource.getMimeType();
+                if (mimeType == null) {
+                    try {
+                        mimeType = new MimeType("application/octet-stream");
+                        // There is no method to set the MIME type, so in order to set it to our default
+                        // one, we need to create a new object.
+                        resource = new ResourceImpl(resource.getInputStream(), mimeType,
+                                resource.getName());
+                    } catch (MimeTypeParseException e) {
+                        throw new CswException(
+                                "Could not create default mime type upon null mimeType, for default mime type '"
+                                        + "application/octet-stream" + "'.", e);
+                    }
+                }
+                CswRecordCollection cswRecordCollection = new CswRecordCollection();
+                cswRecordCollection.setById(true);
+                cswRecordCollection.setResource(resource);
+                cswRecordCollection.setOutputSchema(request.getOutputSchema());
+                cswRecordCollection.setMimeType(mimeType.toString());
+                return cswRecordCollection;
+            }
+
             CswRecordCollection response = queryById(request.getId());
             response.setOutputSchema(request.getOutputSchema());
             if (request.isSetElementSetName() && request.getElementSetName().getValue() != null) {

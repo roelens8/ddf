@@ -925,12 +925,12 @@ public class CswSource extends MaskableImpl
         getRecordsType.setStartPosition(BigInteger.valueOf(query.getStartIndex()));
         getRecordsType.setMaxRecords(BigInteger.valueOf(query.getPageSize()));
         getRecordsType.setOutputFormat(MediaType.APPLICATION_XML);
-        if (!isOutputSchemaSupported()) {
-            String msg = "CSW Source: " + cswSourceConfiguration.getId()
-                    + " does not support output schema: " + cswSourceConfiguration.getOutputSchema()
-                    + ".";
-            throw new UnsupportedQueryException(msg);
-        }
+//        if (!isOutputSchemaSupported()) {
+//            String msg = "CSW Source: " + cswSourceConfiguration.getId()
+//                    + " does not support output schema: " + cswSourceConfiguration.getOutputSchema()
+//                    + ".";
+//            throw new UnsupportedQueryException(msg);
+//        }
         getRecordsType.setOutputSchema(cswSourceConfiguration.getOutputSchema());
         getRecordsType.setAbstractQuery(createQuery(query, elementSetName, elementNames));
         return getRecordsType;

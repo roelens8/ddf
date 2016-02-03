@@ -21,6 +21,7 @@ import javax.xml.namespace.QName;
 
 import ddf.catalog.data.Metacard;
 import ddf.catalog.operation.SourceResponse;
+import ddf.catalog.resource.Resource;
 import net.opengis.cat.csw.v_2_0_2.ElementSetType;
 import net.opengis.cat.csw.v_2_0_2.GetRecordsType;
 import net.opengis.cat.csw.v_2_0_2.ResultType;
@@ -59,6 +60,8 @@ public class CswRecordCollection {
     private ResultType resultType;
 
     private boolean doWriteNamespaces;
+
+    private Resource resource;
 
     /**
      * Retrieves the request made that generated this set of CSW Records, if applicable
@@ -182,5 +185,13 @@ public class CswRecordCollection {
 
     public void setDoWriteNamespaces(boolean doWriteNamespaces) {
         this.doWriteNamespaces = doWriteNamespaces;
+    }
+
+    public void setResource(Resource resource) {
+        this.resource = resource;
+    }
+
+    public Resource getResource() {
+        return resource;
     }
 }

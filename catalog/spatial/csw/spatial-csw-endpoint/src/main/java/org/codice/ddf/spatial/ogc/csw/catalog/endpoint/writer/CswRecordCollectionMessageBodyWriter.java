@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import ddf.catalog.data.BinaryContent;
+import ddf.catalog.resource.Resource;
 import ddf.catalog.transform.CatalogTransformerException;
 import ddf.catalog.transform.QueryResponseTransformer;
 
@@ -83,11 +84,16 @@ public class CswRecordCollectionMessageBodyWriter
         LOGGER.debug(
                 "Attempting to transform RecordCollection with mime-type: {} & outputSchema: {}",
                 mimeType, recordCollection.getOutputSchema());
-        QueryResponseTransformer transformer;
+        QueryResponseTransformer transformer = null;
         Map<String, Serializable> arguments = new HashMap<String, Serializable>();
         if (StringUtils.isBlank(recordCollection.getOutputSchema()) && StringUtils
                 .isNotBlank(mimeType) && !XML_MIME_TYPES.contains(mimeType)) {
             transformer = transformerManager.getTransformerByMimeType(mimeType);
+        } else if (recordCollection.getOutputSchema().equals("productData")) {
+            httpHeaders.get("Content-Type").add(recordCollection.getMimeType());
+            Resource resource = recordCollection.getResource();
+            IOUtils.copy(resource.getInputStream(), outStream);
+            return;
         } else {
             transformer = transformerManager.getTransformerBySchema(CswConstants.CSW_OUTPUT_SCHEMA);
             if (recordCollection.getElementName() != null) {
