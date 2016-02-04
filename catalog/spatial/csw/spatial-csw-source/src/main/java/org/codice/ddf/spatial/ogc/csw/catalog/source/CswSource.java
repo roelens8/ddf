@@ -103,7 +103,6 @@ import ddf.catalog.util.impl.MaskableImpl;
 import ddf.security.SecurityConstants;
 import ddf.security.Subject;
 import ddf.security.service.SecurityManager;
-
 import net.opengis.cat.csw.v_2_0_2.CapabilitiesType;
 import net.opengis.cat.csw.v_2_0_2.ElementSetNameType;
 import net.opengis.cat.csw.v_2_0_2.ElementSetType;
@@ -359,8 +358,8 @@ public class CswSource extends MaskableImpl
         consumerMap.put(CONNECTION_TIMEOUT_PROPERTY,
                 value -> cswSourceConfiguration.setConnectionTimeout((Integer) value));
 
-        consumerMap.put(RECEIVE_TIMEOUT_PROPERTY, value -> cswSourceConfiguration.setReceiveTimeout(
-                (Integer) value));
+        consumerMap.put(RECEIVE_TIMEOUT_PROPERTY,
+                value -> cswSourceConfiguration.setReceiveTimeout((Integer) value));
 
         consumerMap.put(OUTPUT_SCHEMA_PROPERTY,
                 value -> setConsumerOutputSchemaProperty((String) value));
@@ -925,12 +924,12 @@ public class CswSource extends MaskableImpl
         getRecordsType.setStartPosition(BigInteger.valueOf(query.getStartIndex()));
         getRecordsType.setMaxRecords(BigInteger.valueOf(query.getPageSize()));
         getRecordsType.setOutputFormat(MediaType.APPLICATION_XML);
-//        if (!isOutputSchemaSupported()) {
-//            String msg = "CSW Source: " + cswSourceConfiguration.getId()
-//                    + " does not support output schema: " + cswSourceConfiguration.getOutputSchema()
-//                    + ".";
-//            throw new UnsupportedQueryException(msg);
-//        }
+        if (!isOutputSchemaSupported()) {
+            String msg = "CSW Source: " + cswSourceConfiguration.getId()
+                    + " does not support output schema: " + cswSourceConfiguration.getOutputSchema()
+                    + ".";
+            throw new UnsupportedQueryException(msg);
+        }
         getRecordsType.setOutputSchema(cswSourceConfiguration.getOutputSchema());
         getRecordsType.setAbstractQuery(createQuery(query, elementSetName, elementNames));
         return getRecordsType;
@@ -1070,9 +1069,9 @@ public class CswSource extends MaskableImpl
             if (wrappedMetacard.getAttribute(Metacard.RESOURCE_DOWNLOAD_URL) != null &&
                     wrappedMetacard.getAttribute(Metacard.RESOURCE_DOWNLOAD_URL)
                             .getValue() != null) {
-                wrappedMetacard.setAttribute(Metacard.RESOURCE_URI, wrappedMetacard.getAttribute(
-                        Metacard.RESOURCE_DOWNLOAD_URL)
-                        .getValue());
+                wrappedMetacard.setAttribute(Metacard.RESOURCE_URI,
+                        wrappedMetacard.getAttribute(Metacard.RESOURCE_DOWNLOAD_URL)
+                                .getValue());
             }
             Metacard tranformedMetacard = wrappedMetacard;
             if (transformer != null) {
@@ -1462,11 +1461,9 @@ public class CswSource extends MaskableImpl
     }
 
     private boolean isOutputSchemaSupported() {
-        return this.cswSourceConfiguration.getOutputSchema() != null
-                && this.supportedOutputSchemas != null ?
-                this.supportedOutputSchemas.getValue()
-                        .contains(cswSourceConfiguration.getOutputSchema()) :
-                false;
+        return (this.cswSourceConfiguration.getOutputSchema() != null
+                && this.supportedOutputSchemas != null) && this.supportedOutputSchemas.getValue()
+                .contains(cswSourceConfiguration.getOutputSchema());
     }
 
     public void setAvailabilityTask(AvailabilityTask availabilityTask) {
