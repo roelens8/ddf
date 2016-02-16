@@ -101,15 +101,14 @@ public class GetRecordsMessageBodyReader implements MessageBodyReader<CswRecordC
 
         // If the following http header exists and its value is true, the input stream will contain
         // raw product data
-        List<String> productRetrievalHeader =
-                httpHeaders.get(CswConstants.PRODUCT_RETRIEVAL_HTTP_HEADER);
+        String productRetrievalHeader =
+                httpHeaders.getFirst(CswConstants.PRODUCT_RETRIEVAL_HTTP_HEADER);
         if (productRetrievalHeader != null) {
-            if (productRetrievalHeader.get(0)
-                    .equals("true")) {
+            if (productRetrievalHeader
+                    .equalsIgnoreCase("TRUE")) {
                 inStream = new ByteArrayInputStream(IOUtils.toByteArray(inStream));
                 String fileName = handleContentDispositionHeader(httpHeaders.
-                        get(HttpHeaders.CONTENT_DISPOSITION)
-                        .get(0));
+                        getFirst(HttpHeaders.CONTENT_DISPOSITION));
                 cswRecords = new CswRecordCollection();
                 cswRecords.setResource(new ResourceImpl(inStream, mediaType.toString(), fileName));
                 return cswRecords;

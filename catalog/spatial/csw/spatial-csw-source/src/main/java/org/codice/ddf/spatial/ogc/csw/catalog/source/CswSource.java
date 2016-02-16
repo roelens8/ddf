@@ -824,7 +824,10 @@ public class CswSource extends MaskableImpl
             // If no resource reader was found, retrieve product through a GetRecordById request
             Serializable serializableId = requestProperties.get(Metacard.ID);
 
-            if (serializableId != null) {
+            if (serializableId == null) {
+                throw new ResourceNotFoundException(String.format(
+                        "Unable to retrieve resource because no metacard ID was found."));
+            } else {
                 String metacardId = serializableId.toString();
 
                 LOGGER.debug("Retrieving resource for ID : {}", metacardId);
@@ -851,11 +854,10 @@ public class CswSource extends MaskableImpl
                             metacardId), e);
                 }
             }
-            throw new ResourceNotFoundException(String.format(
-                    "Unable to retrieve resource because no metacard ID was found."));
+        } else {
+            LOGGER.debug("Retrieving resource at : {}", resourceUri);
+            return resourceReader.retrieveResource(resourceUri, requestProperties);
         }
-        LOGGER.debug("Retrieving resource at : {}", resourceUri);
-        return resourceReader.retrieveResource(resourceUri, requestProperties);
     }
 
     public void setCswUrl(String cswUrl) {
