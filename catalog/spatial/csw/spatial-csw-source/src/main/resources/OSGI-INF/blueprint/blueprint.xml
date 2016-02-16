@@ -24,8 +24,8 @@
     <reference id="filterAdapter" interface="ddf.catalog.filter.FilterAdapter"/>
     <reference id="filterBuilder" interface="ddf.catalog.filter.FilterBuilder"/>
     <reference id="mimeTypeMapper" interface="ddf.mime.MimeTypeMapper"/>
-    <reference id="resourceReader" interface="ddf.catalog.resource.ResourceReader"
-               filter="(shortname=URLResourceReader)"/>
+    <!--<reference id="resourceReader" interface="ddf.catalog.resource.ResourceReader"-->
+               <!--filter="(shortname=URLResourceReader)"/>-->
     <reference id="cswTransformProvider" interface="com.thoughtworks.xstream.converters.Converter"/>
     <reference id="securityManager" interface="ddf.security.service.SecurityManager"/>
 
@@ -53,7 +53,7 @@
             <property name="thumbnailMapping" value=""/>
             <property name="identifierMapping" value="identifier"/>
             <property name="pollInterval" value="5"/>
-            <property name="resourceReader" ref="resourceReader"/>
+            <!--<property name="resourceReader" ref="resourceReader"/>-->
             <property name="outputSchema" value=""/>
             <property name="queryTypeQName" value=""/>
             <property name="queryTypePrefix" value=""/>
@@ -92,7 +92,7 @@
             <property name="thumbnailMapping" value=""/>
             <property name="identifierMapping" value="identifier"/>
             <property name="pollInterval" value="5"/>
-            <property name="resourceReader" ref="resourceReader"/>
+            <!--<property name="resourceReader" ref="resourceReader"/>-->
             <property name="outputSchema" value=""/>
             <property name="queryTypeQName" value=""/>
             <property name="queryTypePrefix" value=""/>

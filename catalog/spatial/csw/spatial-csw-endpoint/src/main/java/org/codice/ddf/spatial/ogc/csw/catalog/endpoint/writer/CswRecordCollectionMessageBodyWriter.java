@@ -13,6 +13,7 @@
  */
 package org.codice.ddf.spatial.ogc.csw.catalog.endpoint.writer;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -32,6 +33,7 @@ import javax.ws.rs.ext.Provider;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.tika.metadata.HttpHeaders;
 import org.codice.ddf.spatial.ogc.csw.catalog.common.CswConstants;
 import org.codice.ddf.spatial.ogc.csw.catalog.common.CswRecordCollection;
 import org.codice.ddf.spatial.ogc.csw.catalog.transformer.TransformerManager;
@@ -97,10 +99,14 @@ public class CswRecordCollectionMessageBodyWriter
         } else if (recordCollection.getOutputSchema()
                 .equals(OCTET_STREAM_OUTPUT_SCHEMA)) {
             Resource resource = recordCollection.getResource();
-            httpHeaders.put("Content-Type", Arrays.asList(resource.getMimeType()));
-            httpHeaders.put("Content-Disposition",
-                    Arrays.asList("inline; filename=\"" + resource.getName() + "\""));
-            IOUtils.copy(resource.getInputStream(), outStream);
+            httpHeaders.put(HttpHeaders.CONTENT_TYPE, Arrays.asList(resource.getMimeType()));
+            httpHeaders.put(HttpHeaders.CONTENT_DISPOSITION,
+                    Arrays.asList(String.format("inline; filename=%s", resource.getName())));
+            // Custom header to show that the response returns raw product data
+            // instead of a record collection
+            httpHeaders.put(CswConstants.PRODUCT_RETRIEVAL_HTTP_HEADER, Arrays.asList("true"));
+            ByteArrayInputStream in = new ByteArrayInputStream(resource.getByteArray());
+            IOUtils.copy(in, outStream);
             return;
         } else {
             transformer = transformerManager.getTransformerBySchema(CswConstants.CSW_OUTPUT_SCHEMA);
