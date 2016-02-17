@@ -99,6 +99,7 @@ import ddf.catalog.resource.ResourceNotFoundException;
 import ddf.catalog.resource.ResourceNotSupportedException;
 import ddf.catalog.resource.ResourceReader;
 import ddf.catalog.resource.impl.ResourceImpl;
+import ddf.catalog.resource.impl.URLResourceReader;
 import ddf.catalog.service.ConfiguredService;
 import ddf.catalog.source.ConnectedSource;
 import ddf.catalog.source.FederatedSource;
@@ -247,6 +248,8 @@ public class CswSource extends MaskableImpl
     private ResourceReader resourceReader;
 
     private DomainType supportedOutputSchemas;
+
+    private boolean isProductRetrievalSupported;
 
     private Set<ElementSetType> detailLevels;
 
@@ -825,8 +828,8 @@ public class CswSource extends MaskableImpl
             Serializable serializableId = requestProperties.get(Metacard.ID);
 
             if (serializableId == null) {
-                throw new ResourceNotFoundException(String.format(
-                        "Unable to retrieve resource because no metacard ID was found."));
+                throw new ResourceNotFoundException(
+                        "Unable to retrieve resource because no metacard ID was found.");
             } else {
                 String metacardId = serializableId.toString();
 
@@ -854,10 +857,9 @@ public class CswSource extends MaskableImpl
                             metacardId), e);
                 }
             }
-        } else {
-            LOGGER.debug("Retrieving resource at : {}", resourceUri);
-            return resourceReader.retrieveResource(resourceUri, requestProperties);
         }
+        LOGGER.debug("Retrieving resource at : {}", resourceUri);
+        return resourceReader.retrieveResource(resourceUri, requestProperties);
     }
 
     public void setCswUrl(String cswUrl) {
@@ -1237,6 +1239,7 @@ public class CswSource extends MaskableImpl
             }
 
             readGetRecordsOperation(capabilities);
+            adjustResourceReaderBasedOnCapability(capabilities);
 
             loadContentTypes();
             LOGGER.debug("{}: {}", cswSourceConfiguration.getId(), capabilities.toString());
@@ -1505,6 +1508,25 @@ public class CswSource extends MaskableImpl
                         cswSourceConfiguration.getId());
                 monitor.setUnavailable();
             }
+        }
+    }
+
+    /**
+     * In order to maintain backwards compatibility for product retrieval, check if it's
+     * a supported capability through GetRecordById, otherwise initialize the ResourceReader.
+     *
+     * @param capabilitiesType The capabilities the CSW server supports
+     */
+    private void adjustResourceReaderBasedOnCapability(CapabilitiesType capabilitiesType) {
+        OperationsMetadata operationsMetadata = capabilitiesType.getOperationsMetadata();
+        // Check if product retrieval is supported, if not,
+        // initialize ResourceReader if its null
+        Operation getRecordByIdOp = getOperation(operationsMetadata, CswConstants.GET_RECORD_BY_ID);
+        DomainType getRecordByIdOutputSchemas = getParameter(getRecordByIdOp,
+                CswConstants.OUTPUT_SCHEMA_PARAMETER);
+        if (getRecordByIdOutputSchemas.getValue()
+                .contains(OCTET_STREAM_OUTPUT_SCHEMA)) {
+            resourceReader = null;
         }
     }
 
