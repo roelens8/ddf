@@ -38,6 +38,10 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -369,69 +373,41 @@ public class TestSingleSignOn extends AbstractIntegrationTest {
 
     @Test
     public void testRedirectFlow() throws Exception {
+        redirectFlow("admin", "admin");
+    }
 
-        // Negative test to make sure we aren't admin yet
-        assertThat(getUserName(), not("admin"));
+    @Test
+    public void testRedirectFlowStress() throws Exception {
 
-        // First time hitting search, expect to get redirected to the Identity Provider.
-        ResponseHelper searchHelper = getSearchResponse(false);
+        Runnable adminLogin = () -> {
+            try {
+                redirectFlow("admin", "admin");
+            } catch (Exception e) {
+                LOGGER.error("Failed to login IDP with Admin.");
+            }
+        };
+        Runnable localhost = () -> {
+            try {
+                redirectFlow("localhost", "localhost");
+            } catch (Exception e) {
+                LOGGER.error("Failed to login IDP with localhost.");
+            }
+        };
 
-        // Pass our credentials to the IDP, it should redirect us to the Assertion Consumer Service.
-        // The redirect is currently done via javascript and not an HTTP redirect.
-        // @formatter:off
-        Response idpResponse =
-                given().
-                        auth().preemptive().basic("admin", "admin").
-                        param("AuthMethod", "up").
-                        params(searchHelper.params).
-                expect().
-                        statusCode(200).
-                when().
-                        get(searchHelper.redirectUrl);
-        // @formatter:on
 
-        ResponseHelper idpHelper = new ResponseHelper(idpResponse);
+        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(2000);
+        int initialDelay = 0;
+        int period = 50;
 
-        // Perform a bunch of checks to make sure we're valid against both the spec and schema
-        assertThat(idpHelper.parseBody(), is(Binding.REDIRECT));
-        String inflatedSamlResponse = RestSecurity.inflateBase64(idpHelper.get("SAMLResponse"));
-        validateSaml(inflatedSamlResponse, SamlSchema.PROTOCOL);
-        assertThat(inflatedSamlResponse,
-                allOf(containsString("urn:oasis:names:tc:SAML:2.0:status:Success"),
-                        containsString("ds:SignatureValue"),
-                        containsString("saml2:Assertion")));
-        assertThat(idpHelper.get("SigAlg"), not(isEmptyOrNullString()));
-        assertThat(idpHelper.get("Signature"), not(isEmptyOrNullString()));
-        assertThat(idpHelper.get("RelayState")
-                .length(), is(both(greaterThanOrEqualTo(0)).and(lessThanOrEqualTo(80))));
+        executorService.scheduleAtFixedRate(adminLogin, initialDelay, period, TimeUnit.MILLISECONDS);
+        executorService.scheduleAtFixedRate(localhost, initialDelay, period, TimeUnit.MILLISECONDS);
+        //add some delay to let some threads spawn by scheduler
+        Thread.sleep(120000);
 
-        // After passing the SAML Assertion to the ACS, we should be redirected back to Search.
-        // @formatter:off
-        Response acsResponse =
-                given().
-                        params(idpHelper.params).
-                        redirects().follow(false).
-                expect().
-                        statusCode(anyOf(is(302), is(303))).
-                        when().
-                get(idpHelper.redirectUrl);
-        // @formatter:on
-
-        ResponseHelper acsHelper = new ResponseHelper(acsResponse);
-        acsHelper.parseHeader();
-
-        // Access search again, but now as an authenticated user.
-        // @formatter:off
-        given().
-                cookies(acsResponse.getCookies()).
-        expect().
-                statusCode(200).
-        when().
-                get(acsHelper.redirectUrl);
-        // @formatter:on
-
-        // Make sure we are logged in as admin.
-        assertThat(getUserName(acsResponse.getCookies()), is("admin"));
+        executorService.shutdown();
+        while(!executorService.isTerminated()){
+            //wait for all tasks to finish
+        }
     }
 
     @Test
@@ -514,6 +490,71 @@ public class TestSingleSignOn extends AbstractIntegrationTest {
 
         // Verify admin user is no longer logged in
         assertThat(getUserName(), not("admin"));
+    }
+
+    private void redirectFlow(String username, String password) throws Exception {
+        // Negative test to make sure we aren't the user we want to log in with yet
+        assertThat(getUserName(), not(username));
+
+        // First time hitting search, expect to get redirected to the Identity Provider.
+        ResponseHelper searchHelper = getSearchResponse(false);
+
+        // Pass our credentials to the IDP, it should redirect us to the Assertion Consumer Service.
+        // The redirect is currently done via javascript and not an HTTP redirect.
+        // @formatter:off
+        Response idpResponse =
+                given().
+                        auth().preemptive().basic(username, password).
+                        param("AuthMethod", "up").
+                        params(searchHelper.params).
+                        expect().
+                        statusCode(200).
+                        when().
+                        get(searchHelper.redirectUrl);
+        // @formatter:on
+
+        ResponseHelper idpHelper = new ResponseHelper(idpResponse);
+
+        // Perform a bunch of checks to make sure we're valid against both the spec and schema
+        assertThat(idpHelper.parseBody(), is(Binding.REDIRECT));
+        String inflatedSamlResponse = RestSecurity.inflateBase64(idpHelper.get("SAMLResponse"));
+        validateSaml(inflatedSamlResponse, SamlSchema.PROTOCOL);
+        assertThat(inflatedSamlResponse,
+                allOf(containsString("urn:oasis:names:tc:SAML:2.0:status:Success"),
+                        containsString("ds:SignatureValue"),
+                        containsString("saml2:Assertion")));
+        assertThat(idpHelper.get("SigAlg"), not(isEmptyOrNullString()));
+        assertThat(idpHelper.get("Signature"), not(isEmptyOrNullString()));
+        assertThat(idpHelper.get("RelayState")
+                .length(), is(both(greaterThanOrEqualTo(0)).and(lessThanOrEqualTo(80))));
+
+        // After passing the SAML Assertion to the ACS, we should be redirected back to Search.
+        // @formatter:off
+        Response acsResponse =
+                given().
+                        params(idpHelper.params).
+                        redirects().follow(false).
+                        expect().
+                        statusCode(anyOf(is(302), is(303))).
+                        when().
+                        get(idpHelper.redirectUrl);
+        // @formatter:on
+
+        ResponseHelper acsHelper = new ResponseHelper(acsResponse);
+        acsHelper.parseHeader();
+
+        // Access search again, but now as an authenticated user.
+        // @formatter:off
+        given().
+                cookies(acsResponse.getCookies()).
+                expect().
+                statusCode(200).
+                when().
+                get(acsHelper.redirectUrl);
+        // @formatter:on
+
+        // Make sure we are logged in as the user we originally tried logging in with.
+        assertThat(getUserName(acsResponse.getCookies()), is(username));
     }
 
     private class ResponseHelper {
