@@ -62,7 +62,8 @@ public class Security {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Security.class);
 
-    private static final String INSUFFICIENT_PERMISSIONS_ERROR = "Current user doesn't have sufficient privileges to run this command";
+    private static final String INSUFFICIENT_PERMISSIONS_ERROR =
+            "Current user doesn't have sufficient privileges to run this command";
 
     private static final RolePrincipal ADMIN_ROLE = new RolePrincipal("admin");
 
@@ -136,16 +137,12 @@ public class Security {
 
         try {
             try {
-                org.apache.shiro.subject.Subject subject = org.apache.shiro.SecurityUtils.getSubject();
+                org.apache.shiro.subject.Subject subject =
+                        org.apache.shiro.SecurityUtils.getSubject();
                 return subject.execute(codeToRun);
             } catch (IllegalStateException | UnavailableSecurityManagerException e) {
                 LOGGER.debug(
                         "No shiro subject available for running command, trying with Java Subject");
-            }
-
-            if (!javaSubjectHasAdminRole()) {
-                SecurityLogger.audit(INSUFFICIENT_PERMISSIONS_ERROR);
-                throw new SecurityServiceException(INSUFFICIENT_PERMISSIONS_ERROR);
             }
 
             Subject subject = getSystemSubject();
@@ -174,6 +171,12 @@ public class Security {
             return cachedSystemSubject;
         }
 
+        if (!javaSubjectHasAdminRole()) {
+            SecurityLogger.audit(
+                    "Unable to retrieve system subject, because java subject does not have admin role");
+            return null;
+        }
+
         KeyStore keyStore = getSystemKeyStore();
         String alias = null;
         Certificate cert = null;
@@ -198,9 +201,8 @@ public class Security {
         }
 
         PKIAuthenticationTokenFactory pkiTokenFactory = createPKITokenFactory();
-        PKIAuthenticationToken pkiToken = pkiTokenFactory.getTokenFromCerts(
-                new X509Certificate[] {(X509Certificate) cert},
-                PKIAuthenticationToken.DEFAULT_REALM);
+        PKIAuthenticationToken pkiToken = pkiTokenFactory.getTokenFromCerts(new X509Certificate[] {
+                (X509Certificate) cert}, PKIAuthenticationToken.DEFAULT_REALM);
         if (pkiToken != null) {
             SecurityManager securityManager = getSecurityManager();
             if (securityManager != null) {
@@ -237,8 +239,8 @@ public class Security {
     public SecurityManager getSecurityManager() {
         BundleContext context = getBundleContext();
         if (context != null) {
-            ServiceReference securityManagerRef = context.getServiceReference(
-                    SecurityManager.class);
+            ServiceReference securityManagerRef =
+                    context.getServiceReference(SecurityManager.class);
             return (SecurityManager) context.getService(securityManagerRef);
         }
         LOGGER.warn("Unable to get Security Manager");
@@ -271,7 +273,8 @@ public class Security {
 
         } catch (KeyStoreException e) {
             LOGGER.error("Unable to create keystore instance of type {}",
-                    System.getProperty("javax.net.ssl.keyStoreType"), e);
+                    System.getProperty("javax.net.ssl.keyStoreType"),
+                    e);
             return null;
         }
 

@@ -172,7 +172,10 @@ public class SecurityTest {
     public void testGetSystemSubject() throws Exception {
         configureMocksForBundleContext("server");
 
-        assertThat(security.getSystemSubject(), not(equalTo(null)));
+        runAsAdmin(() -> {
+            assertThat(security.getSystemSubject(), not(equalTo(null)));
+            return null;
+        });
     }
 
     @Test
