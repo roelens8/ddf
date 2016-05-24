@@ -26,9 +26,13 @@ import java.security.AccessController;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.Principal;
+import java.security.PrivilegedAction;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -245,6 +249,17 @@ public class Security {
         }
         LOGGER.warn("Unable to get Security Manager");
         return null;
+    }
+
+    public static <T> T runAsAdmin(PrivilegedAction<T> action) {
+        Set<Principal> principals = new HashSet<>();
+        principals.add(new RolePrincipal("admin"));
+        javax.security.auth.Subject subject = new javax.security.auth.Subject(true,
+                principals,
+                new HashSet(),
+                new HashSet());
+
+        return javax.security.auth.Subject.doAs(subject, action);
     }
 
     private BundleContext getBundleContext() {

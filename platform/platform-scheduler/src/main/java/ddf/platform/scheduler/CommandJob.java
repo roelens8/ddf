@@ -124,18 +124,7 @@ public class CommandJob implements Job {
     }
 
     public Subject getSystemSubject() {
-        return runAsAdmin(() -> Security.getSystemSubject());
-    }
-
-    private <T> T runAsAdmin(PrivilegedAction<T> action) {
-        Set<Principal> principals = new HashSet<>();
-        principals.add(new RolePrincipal("admin"));
-        javax.security.auth.Subject subject = new javax.security.auth.Subject(true,
-                principals,
-                new HashSet(),
-                new HashSet());
-
-        return javax.security.auth.Subject.doAs(subject, action);
+        return org.codice.ddf.security.common.Security.runAsAdmin(() -> Security.getSystemSubject());
     }
 
     private CommandProcessor getCommandProcessor() {

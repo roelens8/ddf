@@ -93,7 +93,7 @@ public class ContentDirectoryMonitor implements DirectoryMonitor {
             LOGGER.debug("No routes to remove before configuring a new route");
         }
 
-        runAsAdmin(() -> {
+        org.codice.ddf.security.common.Security.runAsAdmin(() -> {
             configureCamelRoute();
             return null;
         });
@@ -320,17 +320,6 @@ public class ContentDirectoryMonitor implements DirectoryMonitor {
             }
         }
         LOGGER.debug("***************  END: {}  *****************\n\n", msg);
-    }
-
-    private <T> T runAsAdmin(PrivilegedAction<T> action) {
-        Set<Principal> principals = new HashSet<>();
-        principals.add(new RolePrincipal("admin"));
-        javax.security.auth.Subject subject = new javax.security.auth.Subject(true,
-                principals,
-                new HashSet(),
-                new HashSet());
-
-        return javax.security.auth.Subject.doAs(subject, action);
     }
 
     public static class SystemSubjectBinder implements Processor {
