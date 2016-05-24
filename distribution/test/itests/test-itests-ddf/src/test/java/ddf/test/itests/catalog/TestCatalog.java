@@ -103,6 +103,8 @@ public class TestCatalog extends AbstractIntegrationTest {
 
     private static final String DEFAULT_URL_RESOURCE_READER_ROOT_RESOURCE_DIRS = "data/products";
 
+    private static final String ADMIN = "admin";
+
     private UrlResourceReaderConfigurator urlResourceReaderConfigurator;
 
     @Rule
@@ -123,7 +125,10 @@ public class TestCatalog extends AbstractIntegrationTest {
 
     public static String ingest(String data, String mimeType) {
         LOGGER.info("Ingesting data of type {}:\n{}", mimeType, data);
-        return given().body(data)
+        return given().auth()
+                .preemptive()
+                .basic(ADMIN, ADMIN)
+                .body(data)
                 .header(HttpHeaders.CONTENT_TYPE, mimeType)
                 .expect()
                 .log()
@@ -139,7 +144,10 @@ public class TestCatalog extends AbstractIntegrationTest {
             return ingest(data, mimeType);
         } else {
             LOGGER.info("Ingesting data of type {}:\n{}", mimeType, data);
-            return given().body(data)
+            return given().auth()
+                    .preemptive()
+                    .basic(ADMIN, ADMIN)
+                    .body(data)
                     .header(HttpHeaders.CONTENT_TYPE, mimeType)
                     .when()
                     .post(REST_PATH.getUrl())
@@ -178,7 +186,10 @@ public class TestCatalog extends AbstractIntegrationTest {
         String fileName = testName.getMethodName() + ".jpg";
         File tmpFile = createTemporaryFile(fileName,
                 TestCatalog.class.getResourceAsStream(SAMPLE_IMAGE));
-        String id = given().multiPart(tmpFile)
+        String id = given().auth()
+                .preemptive()
+                .basic("admin", "admin")
+                .multiPart(tmpFile)
                 .expect()
                 .log()
                 .headers()
@@ -886,8 +897,10 @@ public class TestCatalog extends AbstractIntegrationTest {
                 sampleDataByteArray.length));
 
         // @formatter:off
-        given().headers(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML,
-                CswConstants.RANGE_HEADER, String.format("bytes=%s-", offset))
+        given().headers(HttpHeaders.CONTENT_TYPE,
+                MediaType.TEXT_XML,
+                CswConstants.RANGE_HEADER,
+                String.format("bytes=%s-", offset))
                 .body(requestXml)
                 .post(CSW_PATH.getUrl())
                 .then()

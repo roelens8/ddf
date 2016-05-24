@@ -13,9 +13,13 @@
  */
 package org.codice.ddf.catalog.content.monitor;
 
+import java.security.Principal;
+import java.security.PrivilegedAction;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.camel.CamelContext;
@@ -26,6 +30,7 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.FromDefinition;
 import org.apache.camel.model.RouteDefinition;
 import org.apache.commons.lang.StringUtils;
+import org.apache.karaf.jaas.boot.principal.RolePrincipal;
 import org.apache.shiro.util.ThreadContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,7 +93,10 @@ public class ContentDirectoryMonitor implements DirectoryMonitor {
             LOGGER.debug("No routes to remove before configuring a new route");
         }
 
-        configureCamelRoute();
+        runAsAdmin(() -> {
+            configureCamelRoute();
+            return null;
+        });
     }
 
     /**
@@ -174,8 +182,8 @@ public class ContentDirectoryMonitor implements DirectoryMonitor {
                     String attributeOverrideString = attributeOverrides.stream()
                             .map(String::trim)
                             .collect(Collectors.joining(","));
-                    routeDefinition.setHeader(Constants.ATTRIBUTE_OVERRIDES_KEY, simple(
-                            attributeOverrideString));
+                    routeDefinition.setHeader(Constants.ATTRIBUTE_OVERRIDES_KEY,
+                            simple(attributeOverrideString));
                 }
 
                 routeDefinition.process(systemSubjectBinder)
@@ -314,6 +322,17 @@ public class ContentDirectoryMonitor implements DirectoryMonitor {
         LOGGER.debug("***************  END: {}  *****************\n\n", msg);
     }
 
+    private <T> T runAsAdmin(PrivilegedAction<T> action) {
+        Set<Principal> principals = new HashSet<>();
+        principals.add(new RolePrincipal("admin"));
+        javax.security.auth.Subject subject = new javax.security.auth.Subject(true,
+                principals,
+                new HashSet(),
+                new HashSet());
+
+        return javax.security.auth.Subject.doAs(subject, action);
+    }
+
     public static class SystemSubjectBinder implements Processor {
 
         /**
@@ -325,6 +344,7 @@ public class ContentDirectoryMonitor implements DirectoryMonitor {
         @Override
         public void process(Exchange exchange) {
             ThreadContext.bind(Security.getSystemSubject());
+
         }
     }
 }

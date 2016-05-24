@@ -18,11 +18,16 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
+import java.security.PrivilegedAction;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 import org.apache.felix.gogo.runtime.CommandNotFoundException;
 import org.apache.felix.service.command.CommandProcessor;
 import org.apache.felix.service.command.CommandSession;
+import org.apache.karaf.jaas.boot.principal.RolePrincipal;
 import org.apache.karaf.shell.security.impl.SecuredCommandProcessorImpl;
 import org.osgi.framework.FrameworkUtil;
 import org.quartz.Job;
@@ -119,7 +124,18 @@ public class CommandJob implements Job {
     }
 
     public Subject getSystemSubject() {
-        return Security.getSystemSubject();
+        return runAsAdmin(() -> Security.getSystemSubject());
+    }
+
+    private <T> T runAsAdmin(PrivilegedAction<T> action) {
+        Set<Principal> principals = new HashSet<>();
+        principals.add(new RolePrincipal("admin"));
+        javax.security.auth.Subject subject = new javax.security.auth.Subject(true,
+                principals,
+                new HashSet(),
+                new HashSet());
+
+        return javax.security.auth.Subject.doAs(subject, action);
     }
 
     private CommandProcessor getCommandProcessor() {
