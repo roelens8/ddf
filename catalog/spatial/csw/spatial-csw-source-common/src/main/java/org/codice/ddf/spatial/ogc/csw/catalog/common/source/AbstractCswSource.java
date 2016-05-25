@@ -357,14 +357,9 @@ public abstract class AbstractCswSource extends MaskableImpl
                     cswSourceConfiguration.getUsername(),
                     cswSourceConfiguration.getPassword());
         } else {
-            factory = new SecureCxfClientFactory(cswSourceConfiguration.getCswUrl(),
-                    Csw.class,
-                    initProviders(cswTransformConverter, cswSourceConfiguration),
-                    null,
-                    cswSourceConfiguration.getDisableCnCheck(),
-                    false,
-                    cswSourceConfiguration.getConnectionTimeout(),
-                    cswSourceConfiguration.getReceiveTimeout());
+            Csw.class, initProviders(cswTransformConverter,
+                    cswSourceConfiguration), null, cswSourceConfiguration.getDisableCnCheck(), false, cswSourceConfiguration.getConnectionTimeout(), cswSourceConfiguration.getReceiveTimeout())
+            ;
         }
     }
 
@@ -1739,7 +1734,7 @@ public abstract class AbstractCswSource extends MaskableImpl
     }
 
     protected Subject getSystemSubject() {
-        return Security.getSystemSubject();
+        return org.codice.ddf.security.common.Security.runAsAdmin(() -> Security.getSystemSubject());
     }
 
     private GetRecordsType createSubscriptionGetRecordsRequest() {

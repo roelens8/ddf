@@ -177,7 +177,7 @@ public class Security {
 
         if (!javaSubjectHasAdminRole()) {
             SecurityLogger.audit(
-                    "Unable to retrieve system subject, because java subject does not have admin role");
+                    "Unable to retrieve system subject, because java subject contain an admin role");
             return null;
         }
 

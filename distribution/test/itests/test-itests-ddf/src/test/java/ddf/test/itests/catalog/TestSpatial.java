@@ -79,6 +79,8 @@ public class TestSpatial extends AbstractIntegrationTest {
 
     private static Map<String, String> metacardIds = new HashMap<>();
 
+    private static final String ADMIN = "admin";
+
     private final ImmutableMap<String, ExpectedResultPair[]> cswExpectedResults =
             ImmutableMap.<String, ExpectedResultPair[]>builder().put("CswAfterDateQuery",
                     new ExpectedResultPair[] {
@@ -362,7 +364,10 @@ public class TestSpatial extends AbstractIntegrationTest {
 
         String transactionRequest = Library.getCswInsert("csw:Record", cswRecord);
 
-        ValidatableResponse response = given().log()
+        ValidatableResponse response = given().auth()
+                .preemptive()
+                .basic(ADMIN, ADMIN)
+                .log()
                 .all()
                 .body(transactionRequest)
                 .header("Content-Type", MediaType.APPLICATION_XML)
