@@ -357,9 +357,14 @@ public abstract class AbstractCswSource extends MaskableImpl
                     cswSourceConfiguration.getUsername(),
                     cswSourceConfiguration.getPassword());
         } else {
-            Csw.class, initProviders(cswTransformConverter,
-                    cswSourceConfiguration), null, cswSourceConfiguration.getDisableCnCheck(), false, cswSourceConfiguration.getConnectionTimeout(), cswSourceConfiguration.getReceiveTimeout())
-            ;
+            factory = new SecureCxfClientFactory(cswSourceConfiguration.getCswUrl(),
+                    Csw.class,
+                    initProviders(cswTransformConverter, cswSourceConfiguration),
+                    null,
+                    cswSourceConfiguration.getDisableCnCheck(),
+                    false,
+                    cswSourceConfiguration.getConnectionTimeout(),
+                    cswSourceConfiguration.getReceiveTimeout());
         }
     }
 
