@@ -171,14 +171,14 @@ public class Security {
      */
     public synchronized Subject getSystemSubject() {
 
-        if (!tokenAboutToExpire(cachedSystemSubject)) {
-            return cachedSystemSubject;
-        }
-
         if (!javaSubjectHasAdminRole()) {
             SecurityLogger.audit(
                     "Unable to retrieve system subject, because java subject contain an admin role");
             return null;
+        }
+
+        if (!tokenAboutToExpire(cachedSystemSubject)) {
+            return cachedSystemSubject;
         }
 
         KeyStore keyStore = getSystemKeyStore();
