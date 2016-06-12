@@ -64,6 +64,13 @@
             <classifier>features</classifier>
         </dependency>
         <dependency>
+            <groupId>org.apache.karaf.features</groupId>
+            <artifactId>enterprise</artifactId>
+            <version>${karaf.version}</version>
+            <type>xml</type>
+            <classifier>features</classifier>
+        </dependency>
+        <dependency>
             <groupId>ddf.distribution</groupId>
             <artifactId>console-branding</artifactId>
             <version>${project.version}</version>
