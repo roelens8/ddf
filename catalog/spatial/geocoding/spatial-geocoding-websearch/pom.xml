@@ -66,6 +66,16 @@
             <artifactId>geospatial</artifactId>
             <version>${ddf.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.codice.ddf.spatial.country.converter</groupId>
+            <artifactId>spatial-country-api</artifactId>
+            <version>${ddf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.codice.ddf.spatial.country</groupId>
+            <artifactId>spatial-country-local-impl</artifactId>
+            <version>${ddf.version}</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

@@ -182,6 +182,7 @@
         <module>wfs</module>
         <module>wcs</module>
         <module>csw</module>
+        <module>country</module>
         <module>registry</module>
         <module>geocoding</module>
         <module>geowebcache</module>

@@ -305,7 +305,7 @@ public class FtpRequestHandler extends DefaultFtplet {
 
     private List<Metacard> storeObject(Subject shiroSubject, String fileName,
             CreateStorageRequest createRequest) {
-        return shiroSubject.execute(() -> {
+        return (List<Metacard>) shiroSubject.execute(() -> {
             CreateResponse createResponse;
             try {
                 createResponse = catalogFramework.create(createRequest);

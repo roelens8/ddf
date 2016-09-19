@@ -16,9 +16,14 @@
 
     <bean id="geoCoderLocal" class="org.codice.ddf.spatial.geocoder.geonames.GeoNamesLocalIndex">
         <property name="geoEntryQueryable" ref="geoEntryQueryable"/>
+        <property name="countryCodeConverter" ref="countryCodeConverter"/>
     </bean>
 
-    <reference id="geoEntryQueryable" interface="org.codice.ddf.spatial.geocoding.GeoEntryQueryable"/>
+    <reference id="countryCodeConverter"
+               interface="org.codice.ddf.spatial.country.converter.api.CountryCodeConverter"/>
+
+    <reference id="geoEntryQueryable"
+               interface="org.codice.ddf.spatial.geocoding.GeoEntryQueryable"/>
 
     <service ref="geoCoderLocal" interface="org.codice.ddf.spatial.geocoder.GeoCoder" ranking="50"/>
 

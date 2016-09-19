@@ -32,6 +32,7 @@ import java.util.Optional;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.cxf.jaxrs.client.WebClient;
+import org.codice.ddf.spatial.country.converter.impl.LocalCountryCodeConverter;
 import org.codice.ddf.spatial.geocoder.GeoResult;
 import org.codice.ddf.spatial.geocoding.context.NearbyLocation;
 import org.junit.Before;
@@ -75,6 +76,7 @@ public class TestGeoNamesWebService {
     @Before
     public void setUp() {
         this.webService = new GeoNamesWebService();
+        this.webService.setCountryCodeConverter(new LocalCountryCodeConverter());
         this.webServiceSpy = spy(webService);
     }
 

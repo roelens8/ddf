@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.codice.ddf.spatial.country.converter.impl.LocalCountryCodeConverter;
 import org.codice.ddf.spatial.geocoder.GeoResult;
 import org.codice.ddf.spatial.geocoding.GeoEntry;
 import org.codice.ddf.spatial.geocoding.GeoEntryQueryException;
@@ -68,6 +69,7 @@ public class TestGeoNamesLocalIndex {
     @Before
     public void setUp() {
         geoNamesLocalIndex = new GeoNamesLocalIndex();
+        geoNamesLocalIndex.setCountryCodeConverter(new LocalCountryCodeConverter());
         geoEntryQueryable = mock(GeoEntryQueryable.class);
         geoNamesLocalIndex.setGeoEntryQueryable(geoEntryQueryable);
     }

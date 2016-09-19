@@ -25,7 +25,7 @@ import javax.ws.rs.WebApplicationException;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.cxf.jaxrs.client.WebClient;
-import org.codice.ddf.libs.location.ISOFormatConverter;
+import org.codice.ddf.spatial.country.converter.api.CountryCodeConverter;
 import org.codice.ddf.spatial.geocoder.GeoCoder;
 import org.codice.ddf.spatial.geocoder.GeoResult;
 import org.codice.ddf.spatial.geocoder.GeoResultCreator;
@@ -69,6 +69,12 @@ public class GeoNamesWebService implements GeoCoder {
     private static final String ADMIN_CODE_KEY = "fcode";
 
     private static final String PLACENAME_KEY = "name";
+
+    private CountryCodeConverter countryCodeConverter;
+
+    public void setCountryCodeConverter(final CountryCodeConverter countryCodeConverter) {
+        this.countryCodeConverter = countryCodeConverter;
+    }
 
     @Override
     public GeoResult getLocation(String location) {
@@ -204,13 +210,14 @@ public class GeoNamesWebService implements GeoCoder {
                 String alpha2CountryCode = (String) countryCode;
                 if (StringUtils.isNotEmpty(alpha2CountryCode)) {
                     try {
-                        String alpha3CountryCode =
-                                ISOFormatConverter.convert(ISOFormatConverter.ENGLISH_LANG,
-                                        alpha2CountryCode);
+                        String alpha3CountryCode = countryCodeConverter.convertIso2ToIso3(
+                                CountryCodeConverter.ENGLISH_LANG,
+                                alpha2CountryCode);
                         return Optional.of(alpha3CountryCode);
                     } catch (MissingResourceException e) {
                         LOGGER.debug(
-                                "Failed to convert country code {} to alpha-3 format. Returning empty value",
+                                "Failed to convert country code {} to alpha-3 format. Returning "
+                                        + "empty value",
                                 alpha2CountryCode);
                     }
                 }
