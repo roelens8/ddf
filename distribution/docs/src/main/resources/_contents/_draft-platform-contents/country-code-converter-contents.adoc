@@ -1,63 +1,15 @@
+==== Country Code Converter
 
-The ${ddf-platform} application is considered to be a core application of the distribution.
-The Platform application provides the fundamental building blocks that the distribution needs to run.
-These building blocks include subsets of:
+In the Platform Application, you have the option to install a feature called `platform-country-local`.
+This feature provides an OSGi service to convert country codes into various formats by performing a local lookup.
 
-* http://karaf.apache.org/[Karaf], 
-* http://cxf.apache.org/CXF[CXF],  and 
-* http://camel.apache.org/[Camel]. 
+In order to utilize the FIPS 10-4 to ISO 3166-1 alpha 3 and vice versa country code conversions, the `FIPS 10-4 to ISO 3166-1 alpha 3 File Location` field in the feature's configuration must be entered with the file path of a properties file containing the FIPS 10-4 to ISO 3166-3 alpha 3 country code mappings. The feature is already configured by default upon installation, with the file location field pointing to a properties file containing country code mappings from http://www.opengeocode.org/. This file can be found at: ${branding-lowercase}.home/etc/fipsToIso.properties, and should only be modified in the case the country code mappings would ever change.
 
-A Command Scheduler is also included as part of the Platform application.
-The Command Scheduler allows users to schedule Command Line Shell Commands to run at certain specified intervals.
+The mapping file contains each mapping in the following format, where the country on the left side of the equals sign is FIPS and the country or countries on the right side of the equals sign is ISO, and a new line separating each mapping:
 
-=== Using ${ddf-platform} Application
+If there is a single FIPS 10-4 country that maps to a single ISO 3166-1 alpha 3 country: AB=ABC
 
-The Platform application is a core building block for any application and should be referenced for its core component versions so that developers can ensure compatibility with their own applications.
-The Command Scheduler included in the Platform application should be for the convenience of a "platform independent" method of running certain commands, such as backing up data or logging settings.
-
-=== Installing and Uninstalling Platform
-
-==== Prerequisites
-
-None.
-
-==== Installing ${ddf-platform}
-
-The Platform application is installed by default on a standard installation.
-
-==== Configuring ${ddf-platform}
- 
-[cols="1,1,2" options="header"]
-|===
-|Configuration
-|ID
-|Description
-
-|Landing Page
-|`org.codice.${ddf-branding-lowercase}.distribution.landing-page.properties`
-|Customize elements seen on landing page.
-
-|MIME Custom Types
-|`${ddf-branding}_Custom_Mime_Type_Resolver`
-|Add or configure resolvers to identify files by type.
-
-|Metrics Reporting
-|`MetricsReporting`
-|Allocate resources for metrics collection.
-
-|Persistent Store
-|`org.codice.${ddf-branding-lowercase}.persistence.internal.PersistentStoreImpl`
-|Set URL for Solr server used as persistant store.
-
-|Platform Command Scheduler
-|`${ddf-branding-lowercase}.platform.scheduler.Command`
-|Schedule shell commands to run periodically.
-
-|Platform UI Configuration
-|`${ddf-branding-lowercase}.platform.ui.config`
-|
-
-|===
+If there is a single FIPS 10-4 country that maps to multiple ISO 3166-1 alpha 3 countries: ZZ=ZZZ,YYY
 
 ==== Country Code Converter
 
