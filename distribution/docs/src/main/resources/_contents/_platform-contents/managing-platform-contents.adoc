@@ -58,3 +58,16 @@ The Platform application is installed by default on a standard installation.
 |
 
 |===
+
+==== Country Code Converter
+
+In the Platform Application, you have the option to install a feature called `platform-country-local`.
+This feature provides an OSGi service to convert country codes to and from various formats by performing a local lookup.
+
+In order to utilize the country code converter, the `Country Mappings File Locations` field in the feature's configuration must be entered with the file path of each properties file containing country code mappings of the desired country code formats. The feature is already configured by default upon installation, with the file location field pointing to a properties file containing FIPS 10-4 to ISO 3166-1 alpha 3 country code mappings from http://www.opengeocode.org/. This file can be found at: ${branding-lowercase}.home/etc/fips_10_4.properties, and should only be modified in the case the country code mappings would ever change.
+
+The mapping file contains each mapping in the following format, where the country on the left side of the equals sign is the source format and the country or countries on the right side of the equals sign is always ISO 3166-1 alpha 3 (as that's the normalized country code format), and a new line separating each mapping:
+
+If there is a single country code from the format X that maps to a single ISO 3166-1 alpha 3 country: AB=ABC
+
+If there is a single country code from the format X that maps to multiple ISO 3166-1 alpha 3 countries: ZZ=ZZZ,YYY

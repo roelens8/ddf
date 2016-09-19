@@ -10,26 +10,10 @@
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
  * is distributed along with this program and can be found at
  * <http://www.gnu.org/licenses/lgpl.html>.
- **/
-package org.codice.ddf.libs.location;
+ */
+package org.codice.ddf.country.converter.api;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.core.Is.is;
-
-import java.util.MissingResourceException;
-
-import org.junit.Test;
-
-public class ISOFormatConverterTest {
-
-    @Test
-    public void testIsoFormatConverter() {
-        String alpha3CountryCode = ISOFormatConverter.convert(ISOFormatConverter.ENGLISH_LANG, "NO");
-        assertThat(alpha3CountryCode, is("NOR"));
-    }
-
-    @Test (expected = MissingResourceException.class)
-    public void testIsoFormatConverterInvalidCountryCode() {
-        ISOFormatConverter.convert(ISOFormatConverter.ENGLISH_LANG, "invalid country code");
-    }
+public enum CountryCodeFormat {
+    FIPS_10_4(),
+    ISO_3166_1_ALPHA_3()
 }
