@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.MissingResourceException;
 import java.util.Optional;
 
-import org.codice.ddf.libs.location.ISOFormatConverter;
+import org.codice.ddf.libs.location.CountryCodeConverter;
 import org.codice.ddf.spatial.geocoder.GeoCoder;
 import org.codice.ddf.spatial.geocoder.GeoResult;
 import org.codice.ddf.spatial.geocoder.GeoResultCreator;
@@ -94,9 +94,9 @@ public class GeoNamesLocalIndex implements GeoCoder {
 
             if (alpha2CountryCode.isPresent()) {
                 try {
-                    String alpha3CountryCode =
-                            ISOFormatConverter.convert(ISOFormatConverter.ENGLISH_LANG,
-                                    alpha2CountryCode.get());
+                    String alpha3CountryCode = CountryCodeConverter.convertIso2ToIso3(
+                            CountryCodeConverter.ENGLISH_LANG,
+                            alpha2CountryCode.get());
                     return Optional.of(alpha3CountryCode);
                 } catch (MissingResourceException e) {
                     LOGGER.debug(

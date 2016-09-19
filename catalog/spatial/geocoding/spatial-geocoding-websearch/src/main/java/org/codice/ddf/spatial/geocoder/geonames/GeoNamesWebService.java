@@ -25,7 +25,7 @@ import javax.ws.rs.WebApplicationException;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.cxf.jaxrs.client.WebClient;
-import org.codice.ddf.libs.location.ISOFormatConverter;
+import org.codice.ddf.libs.location.CountryCodeConverter;
 import org.codice.ddf.spatial.geocoder.GeoCoder;
 import org.codice.ddf.spatial.geocoder.GeoResult;
 import org.codice.ddf.spatial.geocoder.GeoResultCreator;
@@ -204,9 +204,9 @@ public class GeoNamesWebService implements GeoCoder {
                 String alpha2CountryCode = (String) countryCode;
                 if (StringUtils.isNotEmpty(alpha2CountryCode)) {
                     try {
-                        String alpha3CountryCode =
-                                ISOFormatConverter.convert(ISOFormatConverter.ENGLISH_LANG,
-                                        alpha2CountryCode);
+                        String alpha3CountryCode = CountryCodeConverter.convertIso2ToIso3(
+                                CountryCodeConverter.ENGLISH_LANG,
+                                alpha2CountryCode);
                         return Optional.of(alpha3CountryCode);
                     } catch (MissingResourceException e) {
                         LOGGER.debug(

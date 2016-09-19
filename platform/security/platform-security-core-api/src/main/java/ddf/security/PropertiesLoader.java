@@ -31,6 +31,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.support.PropertiesLoaderUtils;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
+
 /**
  * Utility class that attempts several different methods for loading in properties files from the
  * classpath or file system.
@@ -54,6 +57,18 @@ public final class PropertiesLoader {
             return map;
         }
         return new HashMap<K, V>();
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <K, V> Multimap<K, V> toMultiMap(Properties properties) {
+        Multimap<K, V> map = ArrayListMultimap.create();
+        if (properties != null) {
+            final Set<Map.Entry<Object, Object>> entries = properties.entrySet();
+            for (Map.Entry<Object, Object> entry : entries) {
+                map.put((K) entry.getKey(), (V) entry.getValue());
+            }
+        }
+        return map;
     }
 
     /**
