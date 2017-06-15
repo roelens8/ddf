@@ -55,8 +55,9 @@
                     <instructions>
                         <Fragment-Host>org.apache.activemq.artemis-server-osgi</Fragment-Host>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
-                        <!-- Don't Export Anything -->
-                        <Export-Package/>
+                        <Export-Package>
+                            org.codice.ddf.broker.security
+                        </Export-Package>
                     </instructions>
                 </configuration>
             </plugin>

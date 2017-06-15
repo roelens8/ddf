@@ -47,6 +47,7 @@
         - removed features that are not needed
         - updated versions of qpid and proton versions and added netty bundles in camel-amqp
         - replaced bundles in camel-jms
+        - the versions for proton-j and qpid-jms-client used in camel-amqp need to be kept in sync with the versions used in artemis-amqp
 
     DO NOT EDIT
     -->
