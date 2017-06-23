@@ -139,7 +139,7 @@
         <geronimo-jms_2_spec.version>1.0-alpha-2</geronimo-jms_2_spec.version>
         <!--END versions that MUST exactly match the versions used by the CXF and Camel features-->
         <!-- Artemis dependencies -->
-        <artemis.version>2.1.0</artemis.version>
+        <artemis.version>2.2.0-SNAPSHOT</artemis.version>
         <!--START Camel and Artemis features should use the same versions for these bundles-->
         <proton.version>0.19.0</proton.version>
         <qpid-jms.version>0.23.0</qpid-jms.version>
