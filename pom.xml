@@ -136,6 +136,7 @@
         <logback.classic.version>1.2.3</logback.classic.version>
         <usng4j.version>0.1</usng4j.version>
         <camel.version>2.19.0</camel.version>
+        <camel.version.sjms>2.19.0-sjms-fix</camel.version.sjms>
         <commons-pool.version>1.6</commons-pool.version>
         <gson.version>2.7</gson.version>
         <javax.servlet-api.version>3.1.0</javax.servlet-api.version>
@@ -1005,6 +1006,10 @@
             <id>codice</id>
             <name>Codice Repository</name>
             <url>https://artifacts.codice.org/content/groups/public/</url>
+        </repository>
+        <repository>
+            <id>di2e</id>
+            <url>https://nexus.di2e.net/nexus/content/repositories/Private_402GWE_Releases/</url>
         </repository>
     </repositories>
     <pluginRepositories>

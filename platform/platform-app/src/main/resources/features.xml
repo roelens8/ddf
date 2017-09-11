@@ -230,7 +230,7 @@
         <!-- Use version 2.0 of javax jms, DDF update to the camel feature file -->
         <bundle dependency="true">mvn:org.apache.geronimo.specs/geronimo-jms_2.0_spec/${geronimo-jms_2_spec.version}</bundle>
         <bundle dependency="true">mvn:commons-pool/commons-pool/${commons-pool-version}</bundle>
-        <bundle>mvn:org.apache.camel/camel-sjms/${camel.version}</bundle>
+        <bundle>mvn:org.apache.camel/camel-sjms/${camel.version.sjms}</bundle>
     </feature>
     <feature name='camel-sjms2' install="manual" version='${camel.version}' start-level='50'>
         <feature version='${camel.version}'>camel-core</feature>
@@ -239,7 +239,7 @@
         <feature>transaction</feature>
         <bundle dependency='true'>mvn:org.apache.geronimo.specs/geronimo-jms_2.0_spec/${geronimo-jms2-spec-version}</bundle>
         <bundle dependency='true'>mvn:commons-pool/commons-pool/${commons-pool-version}</bundle>
-        <bundle dependency='true'>mvn:org.apache.camel/camel-sjms/${camel.version}</bundle>
+        <bundle dependency='true'>mvn:org.apache.camel/camel-sjms/${camel.version.sjms}</bundle>
         <bundle>mvn:org.apache.camel/camel-sjms2/${camel.version}</bundle>
     </feature>
     <feature name="camel-stax" install="manual" version="${camel.version}" start-level="50">
