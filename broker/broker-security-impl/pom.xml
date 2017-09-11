@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 /**
  * Copyright (c) Codice Foundation
@@ -22,42 +22,45 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
+    <artifactId>broker-security-impl</artifactId>
+    <name>DDF :: Broker :: Security :: Impl</name>
     <packaging>bundle</packaging>
-
-    <artifactId>broker-connection-factory</artifactId>
-    <name>DDF :: Broker :: Connection Factory</name>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.activemq</groupId>
-            <artifactId>artemis-jms-client</artifactId>
+            <artifactId>artemis-server</artifactId>
             <version>${artemis.version}</version>
         </dependency>
         <dependency>
-            <groupId>ddf.lib</groupId>
-            <artifactId>common-system</artifactId>
+            <groupId>org.codice.ddf.broker</groupId>
+            <artifactId>broker-security-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>ddf.security.encryption</groupId>
-            <artifactId>security-encryption-api</artifactId>
+            <groupId>ddf.security.handler</groupId>
+            <artifactId>security-handler-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+
         <dependency>
-            <groupId>org.apache.camel</groupId>
-            <artifactId>camel-sjms</artifactId>
-            <version>${camel.version}</version>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>artemis-amqp-protocol</artifactId>
+            <version>${artemis.version}</version>
         </dependency>
     </dependencies>
+
 
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
                 <configuration>
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
+                        <Export-Package/>
                     </instructions>
                 </configuration>
             </plugin>
@@ -79,17 +82,17 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>.00</minimum>
+                                            <minimum>.8</minimum>
                                         </limit>
                                         <limit>
                                             <counter>BRANCH</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>.00</minimum>
+                                            <minimum>1.00</minimum>
                                         </limit>
                                         <limit>
                                             <counter>COMPLEXITY</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>.00</minimum>
+                                            <minimum>.74</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
