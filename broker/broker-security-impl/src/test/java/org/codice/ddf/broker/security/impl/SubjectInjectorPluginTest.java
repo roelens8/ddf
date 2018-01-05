@@ -23,6 +23,8 @@ import static org.mockito.Mockito.when;
 import ddf.security.Subject;
 import ddf.security.service.SecurityManager;
 import ddf.security.service.SecurityServiceException;
+import java.util.Collections;
+import java.util.HashSet;
 import org.apache.activemq.artemis.api.core.Message;
 import org.apache.activemq.artemis.core.message.impl.CoreMessage;
 import org.apache.activemq.artemis.core.server.ServerSession;
@@ -50,6 +52,8 @@ public class SubjectInjectorPluginTest {
 
     securityServerPlugin = new SubjectInjectorPluginTester();
     securityServerPlugin.setSecurityManager(mockSecurityManager);
+    securityServerPlugin.setConfiguredAddresses(
+        new HashSet<>(Collections.singletonList("test.address")));
   }
 
   @Test
@@ -57,6 +61,7 @@ public class SubjectInjectorPluginTest {
 
     securityServerPlugin.clearCache();
     Message message = new CoreMessage();
+    message.setAddress("test.address");
 
     securityServerPlugin.handleMessage(mockServerSession, null, message, false, false);
     assertThat(message.getStringProperty("subject"), is("Hello World"));
@@ -67,6 +72,7 @@ public class SubjectInjectorPluginTest {
 
     securityServerPlugin.clearCache();
     Message message = new AMQPMessage(1);
+    message.setAddress("test.address");
     securityServerPlugin.handleMessage(mockServerSession, null, message, false, false);
     assertThat(message.getStringProperty("subject"), is("Hello World"));
   }
@@ -75,6 +81,8 @@ public class SubjectInjectorPluginTest {
   public void testPopulatedCache() {
 
     Message message = new AMQPMessage(1);
+
+    message.setAddress("test.address");
     securityServerPlugin.handleMessage(mockServerSession, null, message, false, false);
     assertThat(message.getStringProperty("subject"), is("Hello World"));
   }
@@ -85,6 +93,21 @@ public class SubjectInjectorPluginTest {
     when(mockSecurityManager.getSubject(any(Object.class)))
         .thenThrow(new SecurityServiceException());
     Message message = new CoreMessage();
+
+    message.setAddress("test.address");
+
+    securityServerPlugin.handleMessage(mockServerSession, null, message, false, false);
+    assertThat(message.getStringProperty("subject"), is(nullValue()));
+  }
+
+  @Test
+  public void testNotApplicableAddress() throws SecurityServiceException {
+
+    securityServerPlugin.setConfiguredAddresses(new HashSet<>());
+
+    securityServerPlugin.clearCache();
+    Message message = new CoreMessage();
+    message.setAddress("test.address");
 
     securityServerPlugin.handleMessage(mockServerSession, null, message, false, false);
     assertThat(message.getStringProperty("subject"), is(nullValue()));
