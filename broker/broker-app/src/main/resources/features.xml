@@ -135,8 +135,8 @@
 
     <feature name="broker-adapter" install="manual" version="${project.version}"
              description="Fragment used to integrate Artemis with DDF">
-        <bundle dependency="true">mvn:org.codice.ddf.broker/broker-security-api/${project.version}</bundle>
-        <bundle dependency="true" start-level="50">mvn:org.codice.ddf.broker/broker-security-impl/${project.version}</bundle>
+        <bundle>mvn:org.codice.ddf.broker/broker-security-api/${project.version}</bundle>
+        <bundle start-level="50">mvn:org.codice.ddf.broker/broker-security-impl/${project.version}</bundle>
         <bundle>mvn:org.codice.ddf.broker/broker-adapter/${project.version}</bundle>
     </feature>
 

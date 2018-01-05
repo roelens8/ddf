@@ -35,7 +35,7 @@
 
     <service id="subjectInjectorPluginService"
              interface="org.codice.ddf.broker.security.api.BrokerMessageInterceptor"
-             ref="securityServerPluginImpl">
+             ref="subjectInjectorPlugin">
         <service-properties>
             <entry key="id" value="subjectInjectorPlugin"/>
             <entry key="name" value="subjectInjectorPlugin"/>

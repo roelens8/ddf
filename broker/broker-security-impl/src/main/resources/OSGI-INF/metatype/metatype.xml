@@ -19,7 +19,7 @@
         <AD
                 description="The addresses that should have the Subject injected into the messages"
                 name="Configured Addresses" id="configuredAddresses" required="true"
-                type="String" default=""/>
+                type="String" default="" cardinality="100"/>
     </OCD>
 
     <Designate pid="org.codice.ddf.broker.security.impl.SubjectInjectorPlugin">
