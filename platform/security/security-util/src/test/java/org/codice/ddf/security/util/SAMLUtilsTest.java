@@ -73,14 +73,17 @@ public class SAMLUtilsTest {
   @Test
   public void testSAMLAssertionParse() {
 
-    Subject subject = SAMLUtils.getSubjectFromSAML(SAML_ASSERTION);
+    Subject subject =
+        SAMLUtils.getSubjectFromSAML(SAMLUtils.getSecurityTokenFromSAMLAssertion(SAML_ASSERTION));
     MatcherAssert.assertThat(subject, Matchers.is(subject));
   }
 
   @Test
   public void testSAMLAssertionParseFail() {
 
-    Subject subject = SAMLUtils.getSubjectFromSAML(BAD_SAML_ASSERTION);
+    Subject subject =
+        SAMLUtils.getSubjectFromSAML(
+            SAMLUtils.getSecurityTokenFromSAMLAssertion(BAD_SAML_ASSERTION));
     MatcherAssert.assertThat(subject, Matchers.is(subject));
   }
 

@@ -26,13 +26,12 @@ import org.apache.activemq.artemis.core.server.ServerSession;
 import org.apache.activemq.artemis.core.transaction.Transaction;
 import org.apache.activemq.artemis.protocol.amqp.broker.AMQPMessage;
 import org.apache.qpid.proton.amqp.messaging.ApplicationProperties;
-import org.apache.wss4j.common.util.DOM2Writer;
 import org.codice.ddf.broker.security.api.BrokerMessageInterceptor;
 import org.codice.ddf.security.handler.api.UPAuthenticationToken;
+import org.codice.ddf.security.util.SAMLUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
 public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubjectInjectorPlugin.class);
@@ -64,7 +63,7 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
         return;
       }
     }
-    String subjectAsString = getSubjectAsString(session);
+    String subjectAsString = SAMLUtils.getSubjectAsStringNoSignature(getSubjectAsElement(session));
     message.putStringProperty("subject", subjectAsString);
     if (message instanceof AMQPMessage) {
       Map applicationPropertiesMap =
@@ -87,9 +86,13 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   }
 
   Element getSubjectAsElement(ServerSession session) {
-    return SUBJECT_CACHE.get(session.getUsername()).getPrincipals().oneByType(SecurityAssertion.class).getSecurityToken().getToken();
+    return SUBJECT_CACHE
+        .get(session.getUsername())
+        .getPrincipals()
+        .oneByType(SecurityAssertion.class)
+        .getSecurityToken()
+        .getToken();
   }
-
 
   public void setSecurityManager(SecurityManager securityManager) {
     SubjectInjectorPlugin.securityManager = securityManager;
@@ -106,5 +109,4 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   static Map<String, Subject> getSubjectCache() {
     return SUBJECT_CACHE;
   }
-
 }
