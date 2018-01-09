@@ -48,6 +48,11 @@
             <artifactId>artemis-amqp-protocol</artifactId>
             <version>${artemis.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ddf.security</groupId>
+            <artifactId>security-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
 

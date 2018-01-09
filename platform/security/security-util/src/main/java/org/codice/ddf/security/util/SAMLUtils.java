@@ -61,7 +61,7 @@ public class SAMLUtils {
       thisToken = StaxUtils.read(new StringReader(samlAssertion)).getDocumentElement();
     } catch (XMLStreamException e) {
       LOGGER.info(
-              "Unexpected error converting XML string to element - proceeding without SAML token.", e);
+          "Unexpected error converting XML string to element - proceeding without SAML token.", e);
       thisToken = parseAssertionWithoutNamespace(samlAssertion);
     }
 
@@ -78,7 +78,6 @@ public class SAMLUtils {
     Node signatureElement = subject.getElementsByTagNameNS("*", "Signature").item(0);
     subject.removeChild(signatureElement);
     return DOM2Writer.nodeToString(subject);
-
   }
 
   public static Element parseAssertionWithoutNamespace(String assertion) {
