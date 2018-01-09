@@ -31,6 +31,8 @@ import org.codice.ddf.broker.security.api.BrokerMessageInterceptor;
 import org.codice.ddf.security.handler.api.UPAuthenticationToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 
 public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubjectInjectorPlugin.class);
@@ -84,15 +86,10 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
     return new HashSet<>(configuredAddresses);
   }
 
-  String getSubjectAsString(ServerSession session) {
-    return DOM2Writer.nodeToString(
-        SUBJECT_CACHE
-            .get(session.getUsername())
-            .getPrincipals()
-            .oneByType(SecurityAssertion.class)
-            .getSecurityToken()
-            .getToken());
+  Element getSubjectAsElement(ServerSession session) {
+    return SUBJECT_CACHE.get(session.getUsername()).getPrincipals().oneByType(SecurityAssertion.class).getSecurityToken().getToken();
   }
+
 
   public void setSecurityManager(SecurityManager securityManager) {
     SubjectInjectorPlugin.securityManager = securityManager;
@@ -109,4 +106,5 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   static Map<String, Subject> getSubjectCache() {
     return SUBJECT_CACHE;
   }
+
 }
