@@ -39,6 +39,8 @@ public class SAMLUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SAMLUtils.class);
 
+  private static final SAMLUtils INSTANCE = new SAMLUtils();
+
   private static final Pattern SAML_PREFIX = Pattern.compile("<(?<prefix>\\w+?):Assertion\\s.*");
 
   private static final XMLUtils XML_UTILS = XMLUtils.getInstance();
@@ -48,7 +50,11 @@ public class SAMLUtils {
 
   private static SecurityManager securityManager;
 
-  public static Subject getSubjectFromSAML(SecurityToken securityToken) {
+  public static SAMLUtils getInstance() {
+    return INSTANCE;
+  }
+
+  public Subject getSubjectFromSAML(SecurityToken securityToken) {
 
     Subject returnSubject = null;
     try {
@@ -59,7 +65,7 @@ public class SAMLUtils {
     return returnSubject;
   }
 
-  public static SecurityToken getSecurityTokenFromSAMLAssertion(String samlAssertion) {
+  public SecurityToken getSecurityTokenFromSAMLAssertion(String samlAssertion) {
     SecurityToken securityToken = new SecurityToken();
     Element thisToken;
 
@@ -75,18 +81,18 @@ public class SAMLUtils {
     return securityToken;
   }
 
-  public static String getSubjectAsString(Element subject) {
+  public String getSubjectAsString(Element subject) {
     return DOM2Writer.nodeToString(subject);
   }
 
-  public static String getSubjectAsStringNoSignature(Element subject) {
+  public String getSubjectAsStringNoSignature(Element subject) {
     subject.normalize();
     Node signatureElement = subject.getElementsByTagNameNS("*", "Signature").item(0);
     subject.removeChild(signatureElement);
     return DOM2Writer.nodeToString(subject);
   }
 
-  public static Element parseAssertionWithoutNamespace(String assertion) {
+  public Element parseAssertionWithoutNamespace(String assertion) {
     Element result = null;
 
     Matcher prefix = SAML_PREFIX.matcher(assertion);

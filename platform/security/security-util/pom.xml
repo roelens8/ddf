@@ -24,7 +24,7 @@
     <groupId>ddf.security</groupId>
     <artifactId>security-util</artifactId>
     <name>DDF :: Platform :: Security :: Util</name>
-    <packaging>bundle</packaging>
+    <packaging>jar</packaging>
     <dependencies>
         <dependency>
             <groupId>ddf.security.core</groupId>
@@ -39,6 +39,7 @@
                 <configuration>
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
+                        <Export-Package>org.codice.ddf.security.util</Export-Package>
                     </instructions>
                 </configuration>
             </plugin>
