@@ -63,7 +63,7 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
         return;
       }
     }
-    String subjectAsString = SAMLUtils.getSubjectAsStringNoSignature(getSubjectAsElement(session));
+    String subjectAsString = getStringSubjectFromSession(session);
     message.putStringProperty("subject", subjectAsString);
     if (message instanceof AMQPMessage) {
       Map applicationPropertiesMap =
@@ -85,13 +85,17 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
     return new HashSet<>(configuredAddresses);
   }
 
-  Element getSubjectAsElement(ServerSession session) {
+  private Element getSubjectAsElement(ServerSession session) {
     return SUBJECT_CACHE
         .get(session.getUsername())
         .getPrincipals()
         .oneByType(SecurityAssertion.class)
         .getSecurityToken()
         .getToken();
+  }
+
+  String getStringSubjectFromSession(ServerSession session) {
+    return SAMLUtils.getSubjectAsStringNoSignature(getSubjectAsElement(session));
   }
 
   public void setSecurityManager(SecurityManager securityManager) {
