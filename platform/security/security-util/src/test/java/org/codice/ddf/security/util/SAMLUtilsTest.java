@@ -37,6 +37,8 @@ import org.xml.sax.SAXException;
 
 public class SAMLUtilsTest {
 
+  private static final SAMLUtils SAML_UTILS = SAMLUtils.getInstance();
+
   SecurityManager securityManager;
 
   static final String SAML_ASSERTION =
@@ -76,15 +78,14 @@ public class SAMLUtilsTest {
     securityManager = Mockito.mock(SecurityManager.class);
     Mockito.when(securityManager.getSubject(Matchers.any(SecurityToken.class)))
         .thenReturn(Mockito.mock(Subject.class));
-    SAMLUtils samlUtils = new SAMLUtils();
-    samlUtils.setSecurityManager(securityManager);
+    SAML_UTILS.setSecurityManager(securityManager);
   }
 
   @Test
   public void testSAMLAssertionParse() {
 
     Subject subject =
-        SAMLUtils.getSubjectFromSAML(SAMLUtils.getSecurityTokenFromSAMLAssertion(SAML_ASSERTION));
+        SAML_UTILS.getSubjectFromSAML(SAML_UTILS.getSecurityTokenFromSAMLAssertion(SAML_ASSERTION));
     MatcherAssert.assertThat(subject, Matchers.is(subject));
   }
 
@@ -92,8 +93,8 @@ public class SAMLUtilsTest {
   public void testSAMLAssertionParseFail() {
 
     Subject subject =
-        SAMLUtils.getSubjectFromSAML(
-            SAMLUtils.getSecurityTokenFromSAMLAssertion(BAD_SAML_ASSERTION));
+        SAML_UTILS.getSubjectFromSAML(
+            SAML_UTILS.getSecurityTokenFromSAMLAssertion(BAD_SAML_ASSERTION));
     MatcherAssert.assertThat(subject, Matchers.is(subject));
   }
 
@@ -103,7 +104,7 @@ public class SAMLUtilsTest {
     dbf.setNamespaceAware(true);
     DocumentBuilder documentBuilder = dbf.newDocumentBuilder();
     Document doc = documentBuilder.parse(new ByteArrayInputStream(SAML_ASSERTION.getBytes()));
-    String returnSubject = SAMLUtils.getSubjectAsStringNoSignature(doc.getDocumentElement());
+    String returnSubject = SAML_UTILS.getSubjectAsStringNoSignature(doc.getDocumentElement());
     assertThat(returnSubject, not(containsString("Signature")));
   }
 }

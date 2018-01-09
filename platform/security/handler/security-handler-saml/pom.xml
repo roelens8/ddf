@@ -102,7 +102,7 @@
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Embed-Dependency>
-                            ddf-security-common,httpclient,httpcore,platform-util-unavailableurls,platform-util
+                            ddf-security-common,httpclient,httpcore,platform-util-unavailableurls,platform-util,security-util
                         </Embed-Dependency>
                         <Import-Package>
                             org.apache.cxf.common.util,

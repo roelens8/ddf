@@ -92,7 +92,7 @@ public class SAMLAssertionHandler implements AuthenticationHandler {
         try {
           String tokenString = RestSecurity.inflateBase64(encodedSamlAssertion);
           LOGGER.trace("Header value: {}", tokenString);
-          securityToken = SAMLUtils.getSecurityTokenFromSAMLAssertion(tokenString);
+          securityToken = SAMLUtils.getInstance().getSecurityTokenFromSAMLAssertion(tokenString);
           SAMLAuthenticationToken samlToken =
               new SAMLAuthenticationToken(null, securityToken, realm);
           handlerResult.setToken(samlToken);

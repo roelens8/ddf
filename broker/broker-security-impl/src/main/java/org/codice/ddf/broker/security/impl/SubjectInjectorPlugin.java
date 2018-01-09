@@ -95,7 +95,7 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   }
 
   String getStringSubjectFromSession(ServerSession session) {
-    return SAMLUtils.getSubjectAsStringNoSignature(getSubjectAsElement(session));
+    return SAMLUtils.getInstance().getSubjectAsStringNoSignature(getSubjectAsElement(session));
   }
 
   public void setSecurityManager(SecurityManager securityManager) {
