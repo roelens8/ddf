@@ -170,7 +170,7 @@
         <xalan.bundle.version>2.7.2_3</xalan.bundle.version>
         <!--END versions that MUST exactly match the versions used by the CXF and Camel features-->
         <!-- Artemis dependencies -->
-        <artemis.version>2.2.0</artemis.version>
+        <artemis.version>2.4.0</artemis.version>
         <!--START Camel and Artemis features should use the same versions for these bundles-->
         <proton.version>0.20.0</proton.version>
         <qpid-jms.version>0.24.0</qpid-jms.version>

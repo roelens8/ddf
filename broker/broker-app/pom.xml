@@ -62,6 +62,11 @@
             <artifactId>broker-undelivered-messages-ui</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ddf.security</groupId>
+            <artifactId>security-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
     <properties/>
     <build>
