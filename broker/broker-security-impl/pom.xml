@@ -70,7 +70,6 @@
                 <configuration>
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
-                        <Embed-Dependency>security-util,platform-util</Embed-Dependency>
                         <Export-Package/>
                     </instructions>
                 </configuration>

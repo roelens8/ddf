@@ -397,5 +397,10 @@
             <artifactId>security-idp-plugin-subjectconfirmation</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ddf.security</groupId>
+            <artifactId>security-util</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>
