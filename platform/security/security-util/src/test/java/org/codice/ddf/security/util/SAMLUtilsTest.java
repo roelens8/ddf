@@ -14,10 +14,10 @@
 package org.codice.ddf.security.util;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import ddf.security.Subject;
 import ddf.security.service.SecurityManager;
 import ddf.security.service.SecurityServiceException;
 import java.io.ByteArrayInputStream;
@@ -27,11 +27,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.apache.cxf.ws.security.tokenstore.SecurityToken;
 import org.codice.ddf.platform.util.XMLUtils;
-import org.hamcrest.MatcherAssert;
-import org.hamcrest.Matchers;
+import org.hamcrest.CoreMatchers;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
@@ -73,29 +71,24 @@ public class SAMLUtilsTest {
           + "/bG/jSM1ypJnPKrPVrCkYL3Y68pzxvrFNq5NqAFCcBOCNsDNfvCSZ/XHvFyGHIuso5wNVxJyvTdh\n"
           + "Q+vWbnpiX8qr6vTx2Wgw</ds:X509Certificate></ds:X509Data></ds:KeyInfo></ds:Signature><saml2:Subject><saml2:NameID Format=\"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent\" NameQualifier=\"http://cxf.apache.org/sts\">admin</saml2:NameID><saml2:SubjectConfirmation Method=\"urn:oasis:names:tc:SAML:2.0:cm:bearer\"/></saml2:Subject><saml2:Conditions NotBefore=\"2017-12-21T22:41:17.714Z\" NotOnOrAfter=\"2017-12-21T23:11:17.714Z\"><saml2:AudienceRestriction><saml2:Audience>https://localhost:8993/services/SecurityTokenService?wsdl</saml2:Audience></saml2:AudienceRestriction></saml2:Conditions><saml2:AuthnStatement AuthnInstant=\"2017-12-21T22:41:17.713Z\" SessionIndex=\"135416475\"><saml2:AuthnContext><saml2:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</saml2:AuthnContextClassRef></saml2:AuthnContext></saml2:AuthnStatement><saml2:AttributeStatement><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">admin@localhost.local</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">guest</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">guest</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">guest</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">group</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">admin</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">manager</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">viewer</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">system-admin</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">systembundles</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">admin</saml2:AttributeValue></saml2:Attribute></saml2:AttributeStatement></saml2:Assertion>";
 
+  private static final String NO_SIGNATURE_SAML_ASSERTION =
+      "<saml2:Assertion ID=\"_30a958fd-9283-4169-a65c-f79a33cec296\" IssueInstant=\"2017-12-21T22:41:17.713Z\" Version=\"2.0\" xmlns:saml2=\"urn:oasis:names:tc:SAML:2.0:assertion\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"saml2:AssertionType\"><saml2:Issuer>localhost</saml2:Issuer><saml2:Subject><saml2:NameID Format=\"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent\" NameQualifier=\"http://cxf.apache.org/sts\">admin</saml2:NameID><saml2:SubjectConfirmation Method=\"urn:oasis:names:tc:SAML:2.0:cm:bearer\"/></saml2:Subject><saml2:Conditions NotBefore=\"2017-12-21T22:41:17.714Z\" NotOnOrAfter=\"2017-12-21T23:11:17.714Z\"><saml2:AudienceRestriction><saml2:Audience>https://localhost:8993/services/SecurityTokenService?wsdl</saml2:Audience></saml2:AudienceRestriction></saml2:Conditions><saml2:AuthnStatement AuthnInstant=\"2017-12-21T22:41:17.713Z\" SessionIndex=\"135416475\"><saml2:AuthnContext><saml2:AuthnContextClassRef>urn:oasis:names:tc:SAML:2.0:ac:classes:PasswordProtectedTransport</saml2:AuthnContextClassRef></saml2:AuthnContext></saml2:AuthnStatement><saml2:AttributeStatement><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">admin@localhost.local</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">guest</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">guest</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">guest</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">group</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">admin</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">manager</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">viewer</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">system-admin</saml2:AttributeValue><saml2:AttributeValue xsi:type=\"xsd:string\">systembundles</saml2:AttributeValue></saml2:Attribute><saml2:Attribute Name=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier\" NameFormat=\"urn:oasis:names:tc:SAML:2.0:attrname-format:unspecified\"><saml2:AttributeValue xsi:type=\"xsd:string\">admin</saml2:AttributeValue></saml2:Attribute></saml2:AttributeStatement></saml2:Assertion>";
+
   @Before
-  public void setUp() throws SecurityServiceException {
-    securityManager = Mockito.mock(SecurityManager.class);
-    Mockito.when(securityManager.getSubject(Matchers.any(SecurityToken.class)))
-        .thenReturn(Mockito.mock(Subject.class));
-    SAML_UTILS.setSecurityManager(securityManager);
+  public void setUp() throws SecurityServiceException {}
+
+  @Test
+  public void testSAMLAssertionParse() throws SecurityServiceException {
+
+    SecurityToken securityToken = SAML_UTILS.getSecurityTokenFromSAMLAssertion(SAML_ASSERTION);
+    assertThat(securityToken, CoreMatchers.is(instanceOf(SecurityToken.class)));
   }
 
   @Test
-  public void testSAMLAssertionParse() {
+  public void testSAMLAssertionParseFail() throws SecurityServiceException {
 
-    Subject subject =
-        SAML_UTILS.getSubjectFromSAML(SAML_UTILS.getSecurityTokenFromSAMLAssertion(SAML_ASSERTION));
-    MatcherAssert.assertThat(subject, Matchers.is(subject));
-  }
-
-  @Test
-  public void testSAMLAssertionParseFail() {
-
-    Subject subject =
-        SAML_UTILS.getSubjectFromSAML(
-            SAML_UTILS.getSecurityTokenFromSAMLAssertion(BAD_SAML_ASSERTION));
-    MatcherAssert.assertThat(subject, Matchers.is(subject));
+    SecurityToken securityToken = SAML_UTILS.getSecurityTokenFromSAMLAssertion(BAD_SAML_ASSERTION);
+    assertThat(securityToken, CoreMatchers.is(instanceOf(SecurityToken.class)));
   }
 
   @Test
@@ -104,6 +97,18 @@ public class SAMLUtilsTest {
     dbf.setNamespaceAware(true);
     DocumentBuilder documentBuilder = dbf.newDocumentBuilder();
     Document doc = documentBuilder.parse(new ByteArrayInputStream(SAML_ASSERTION.getBytes()));
+    String returnSubject = SAML_UTILS.getSubjectAsStringNoSignature(doc.getDocumentElement());
+    assertThat(returnSubject, not(containsString("Signature")));
+  }
+
+  @Test
+  public void testRemoveSignatureAlreadyRemoved()
+      throws IOException, SAXException, ParserConfigurationException {
+    DocumentBuilderFactory dbf = XMLUtils.getInstance().getSecureDocumentBuilderFactory();
+    dbf.setNamespaceAware(true);
+    DocumentBuilder documentBuilder = dbf.newDocumentBuilder();
+    Document doc =
+        documentBuilder.parse(new ByteArrayInputStream(NO_SIGNATURE_SAML_ASSERTION.getBytes()));
     String returnSubject = SAML_UTILS.getSubjectAsStringNoSignature(doc.getDocumentElement());
     assertThat(returnSubject, not(containsString("Signature")));
   }

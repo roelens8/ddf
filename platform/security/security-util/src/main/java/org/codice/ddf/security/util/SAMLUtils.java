@@ -13,9 +13,6 @@
  */
 package org.codice.ddf.security.util;
 
-import ddf.security.Subject;
-import ddf.security.service.SecurityManager;
-import ddf.security.service.SecurityServiceException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
@@ -48,21 +45,8 @@ public class SAMLUtils {
   private static final String EVIDENCE =
       "<%1$s:Evidence xmlns:%1$s=\"urn:oasis:names:tc:SAML:2.0:assertion\">%2$s</%1$s:Evidence>";
 
-  private static SecurityManager securityManager;
-
   public static SAMLUtils getInstance() {
     return INSTANCE;
-  }
-
-  public Subject getSubjectFromSAML(SecurityToken securityToken) {
-
-    Subject returnSubject = null;
-    try {
-      returnSubject = securityManager.getSubject(securityToken);
-    } catch (SecurityServiceException e) {
-      LOGGER.warn("Could not convert SAML Auth Token into a Subject. Caught exception: ", e);
-    }
-    return returnSubject;
   }
 
   public SecurityToken getSecurityTokenFromSAMLAssertion(String samlAssertion) {
@@ -88,7 +72,9 @@ public class SAMLUtils {
   public String getSubjectAsStringNoSignature(Element subject) {
     subject.normalize();
     Node signatureElement = subject.getElementsByTagNameNS("*", "Signature").item(0);
-    subject.removeChild(signatureElement);
+    if (signatureElement != null) {
+      subject.removeChild(signatureElement);
+    }
     return DOM2Writer.nodeToString(subject);
   }
 
@@ -122,9 +108,5 @@ public class SAMLUtils {
     }
 
     return result;
-  }
-
-  public void setSecurityManager(SecurityManager securityManager) {
-    SAMLUtils.securityManager = securityManager;
   }
 }

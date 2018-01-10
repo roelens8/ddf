@@ -133,10 +133,15 @@
         <bundle>mvn:org.apache.activemq/artemis-openwire-protocol/${artemis.version}</bundle>
     </feature>
 
+    <feature name="broker-security" install="manual" version="${project.version}" description="Broker security bundles">
+        <bundle>mvn:org.codice.ddf.broker/broker-security-api/${project.version}</bundle>
+        <bundle>mvn:ddf.security/security-util/${project.version}</bundle>
+        <bundle>mvn:org.codice.ddf.broker/broker-security-impl/${project.version}</bundle>
+    </feature>
+
     <feature name="broker-adapter" install="manual" version="${project.version}"
              description="Fragment used to integrate Artemis with DDF">
-        <bundle>mvn:org.codice.ddf.broker/broker-security-api/${project.version}</bundle>
-        <bundle start-level="50">mvn:org.codice.ddf.broker/broker-security-impl/${project.version}</bundle>
+        <feature dependency="true">broker-security</feature>
         <bundle>mvn:org.codice.ddf.broker/broker-adapter/${project.version}</bundle>
     </feature>
 
