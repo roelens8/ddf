@@ -70,6 +70,9 @@ public class SAMLUtils {
   }
 
   public String getSubjectAsStringNoSignature(Element subject) {
+    if (subject == null) {
+      return null;
+    }
     subject.normalize();
     Node signatureElement = subject.getElementsByTagNameNS("*", "Signature").item(0);
     if (signatureElement != null) {

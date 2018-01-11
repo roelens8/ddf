@@ -13,6 +13,8 @@
  */
 package org.codice.ddf.broker.security.impl;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import ddf.security.Subject;
 import ddf.security.assertion.SecurityAssertion;
 import ddf.security.service.SecurityManager;
@@ -20,7 +22,8 @@ import ddf.security.service.SecurityServiceException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import org.apache.activemq.artemis.api.core.Message;
 import org.apache.activemq.artemis.core.server.ServerSession;
 import org.apache.activemq.artemis.core.transaction.Transaction;
@@ -36,7 +39,8 @@ import org.w3c.dom.Element;
 public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubjectInjectorPlugin.class);
 
-  private static final Map<String, Subject> SUBJECT_CACHE = new ConcurrentHashMap<>();
+  private static final Cache<String, Subject> SUBJECT_CACHE =
+      CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
 
   private static SecurityManager securityManager;
 
@@ -52,18 +56,9 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
     if (!configuredAddresses.contains(message.getAddress())) {
       return;
     }
-    if (!SUBJECT_CACHE.containsKey(session.getUsername())) {
-      UPAuthenticationToken usernamePasswordToken =
-          new UPAuthenticationToken(session.getUsername(), session.getPassword());
-      try {
-        Subject subject = securityManager.getSubject(usernamePasswordToken);
-        SUBJECT_CACHE.put(session.getUsername(), subject);
-      } catch (SecurityServiceException e) {
-        LOGGER.warn("Unable to retrieve the Subject from the token", e);
-        return;
-      }
-    }
-    String subjectAsString = getStringSubjectFromSession(session);
+    String subjectAsString = null;
+    subjectAsString = getStringSubjectFromSession(session);
+
     message.putStringProperty("subject", subjectAsString);
     if (message instanceof AMQPMessage) {
       Map applicationPropertiesMap =
@@ -86,12 +81,17 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   }
 
   private Element getSubjectAsElement(ServerSession session) {
-    return SUBJECT_CACHE
-        .get(session.getUsername())
-        .getPrincipals()
-        .oneByType(SecurityAssertion.class)
-        .getSecurityToken()
-        .getToken();
+    try {
+      return SUBJECT_CACHE
+          .get(session.getUsername(), () -> this.cacheAndReturnSubject(session))
+          .getPrincipals()
+          .oneByType(SecurityAssertion.class)
+          .getSecurityToken()
+          .getToken();
+    } catch (ExecutionException e) {
+      LOGGER.warn("Could not get Subject from token", e);
+      return null;
+    }
   }
 
   String getStringSubjectFromSession(ServerSession session) {
@@ -107,10 +107,18 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   }
 
   public void clearCache() {
-    SUBJECT_CACHE.clear();
+    SUBJECT_CACHE.invalidateAll();
   }
 
-  static Map<String, Subject> getSubjectCache() {
+  static Cache<String, Subject> getSubjectCache() {
     return SUBJECT_CACHE;
+  }
+
+  Subject cacheAndReturnSubject(ServerSession session) throws SecurityServiceException {
+    UPAuthenticationToken usernamePasswordToken =
+        new UPAuthenticationToken(session.getUsername(), session.getPassword());
+    Subject subject = securityManager.getSubject(usernamePasswordToken);
+    SUBJECT_CACHE.put(session.getUsername(), subject);
+    return subject;
   }
 }

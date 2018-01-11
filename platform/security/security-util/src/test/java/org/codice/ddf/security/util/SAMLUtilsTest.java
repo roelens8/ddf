@@ -15,9 +15,17 @@ package org.codice.ddf.security.util;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
+import ddf.security.samlp.impl.SAMLUtils;
 import ddf.security.service.SecurityManager;
 import ddf.security.service.SecurityServiceException;
 import java.io.ByteArrayInputStream;
@@ -27,10 +35,12 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import org.apache.cxf.ws.security.tokenstore.SecurityToken;
 import org.codice.ddf.platform.util.XMLUtils;
-import org.hamcrest.CoreMatchers;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
 public class SAMLUtilsTest {
@@ -81,14 +91,14 @@ public class SAMLUtilsTest {
   public void testSAMLAssertionParse() throws SecurityServiceException {
 
     SecurityToken securityToken = SAML_UTILS.getSecurityTokenFromSAMLAssertion(SAML_ASSERTION);
-    assertThat(securityToken, CoreMatchers.is(instanceOf(SecurityToken.class)));
+    MatcherAssert.assertThat(securityToken, CoreMatchers.is(CoreMatchers.instanceOf(SecurityToken.class)));
   }
 
   @Test
   public void testSAMLAssertionParseFail() throws SecurityServiceException {
 
     SecurityToken securityToken = SAML_UTILS.getSecurityTokenFromSAMLAssertion(BAD_SAML_ASSERTION);
-    assertThat(securityToken, CoreMatchers.is(instanceOf(SecurityToken.class)));
+    MatcherAssert.assertThat(securityToken, CoreMatchers.is(CoreMatchers.instanceOf(SecurityToken.class)));
   }
 
   @Test
@@ -98,18 +108,23 @@ public class SAMLUtilsTest {
     DocumentBuilder documentBuilder = dbf.newDocumentBuilder();
     Document doc = documentBuilder.parse(new ByteArrayInputStream(SAML_ASSERTION.getBytes()));
     String returnSubject = SAML_UTILS.getSubjectAsStringNoSignature(doc.getDocumentElement());
-    assertThat(returnSubject, not(containsString("Signature")));
+    MatcherAssert.assertThat(returnSubject, CoreMatchers.not(CoreMatchers.containsString("Signature")));
   }
 
   @Test
   public void testRemoveSignatureAlreadyRemoved()
       throws IOException, SAXException, ParserConfigurationException {
-    DocumentBuilderFactory dbf = XMLUtils.getInstance().getSecureDocumentBuilderFactory();
-    dbf.setNamespaceAware(true);
-    DocumentBuilder documentBuilder = dbf.newDocumentBuilder();
-    Document doc =
-        documentBuilder.parse(new ByteArrayInputStream(NO_SIGNATURE_SAML_ASSERTION.getBytes()));
-    String returnSubject = SAML_UTILS.getSubjectAsStringNoSignature(doc.getDocumentElement());
-    assertThat(returnSubject, not(containsString("Signature")));
+    Element mockElement = mock(Element.class, RETURNS_DEEP_STUBS);
+    doNothing().when(mockElement).normalize();
+    when(mockElement.getElementsByTagNameNS("*", "Signature").item(0)).thenReturn(null);
+    String returnSubject = SAML_UTILS.getSubjectAsStringNoSignature(mockElement);
+    Mockito.verify(mockElement, times(0)).removeChild(Mockito.any(Node.class));
+    MatcherAssert.assertThat(returnSubject, CoreMatchers.not(CoreMatchers.containsString("Signature")));
+  }
+
+  @Test
+  public void testGetSubjectAsStringNoSignatureNullInput() {
+    String returnSubject = SAML_UTILS.getSubjectAsStringNoSignature(null);
+    MatcherAssert.assertThat(returnSubject, CoreMatchers.is(CoreMatchers.nullValue()));
   }
 }
