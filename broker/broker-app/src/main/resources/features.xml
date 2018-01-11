@@ -39,9 +39,8 @@
     </feature>
 
 
-    <feature name="netty-core" install="manual" version="${netty.version}"
-             description="Netty libraries">
-        <bundle>mvn:io.netty/netty-common/${netty.version}</bundle>
+    <feature name="netty-core" version="${netty.version}" description="Netty libraries">
+     <bundle>mvn:io.netty/netty-common/${netty.version}</bundle>
         <bundle>mvn:io.netty/netty-resolver/${netty.version}</bundle>
         <bundle>mvn:io.netty/netty-transport/${netty.version}</bundle>
         <bundle>mvn:io.netty/netty-buffer/${netty.version}</bundle>
