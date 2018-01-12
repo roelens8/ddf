@@ -13,6 +13,7 @@
  */
 package org.codice.ddf.broker.security.impl;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import ddf.security.Subject;
@@ -56,8 +57,7 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
     if (!configuredAddresses.contains(message.getAddress())) {
       return;
     }
-    String subjectAsString = null;
-    subjectAsString = getStringSubjectFromSession(session);
+    String subjectAsString = getStringSubjectFromSession(session);
 
     message.putStringProperty("subject", subjectAsString);
     if (message instanceof AMQPMessage) {
@@ -94,6 +94,7 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
     }
   }
 
+  @VisibleForTesting
   String getStringSubjectFromSession(ServerSession session) {
     return SAMLUtils.getInstance().getSubjectAsStringNoSignature(getSubjectAsElement(session));
   }
@@ -110,10 +111,12 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
     SUBJECT_CACHE.invalidateAll();
   }
 
+  @VisibleForTesting
   static Cache<String, Subject> getSubjectCache() {
     return SUBJECT_CACHE;
   }
 
+  @VisibleForTesting
   Subject cacheAndReturnSubject(ServerSession session) throws SecurityServiceException {
     UPAuthenticationToken usernamePasswordToken =
         new UPAuthenticationToken(session.getUsername(), session.getPassword());

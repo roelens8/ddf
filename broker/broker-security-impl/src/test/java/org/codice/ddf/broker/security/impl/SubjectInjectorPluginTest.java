@@ -33,14 +33,16 @@ import org.apache.activemq.artemis.protocol.amqp.broker.AMQPMessage;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.common.annotations.VisibleForTesting;
+
 public class SubjectInjectorPluginTest {
-  Subject mockSubject;
+  private Subject mockSubject;
 
-  SecurityManager mockSecurityManager;
+  private SecurityManager mockSecurityManager;
 
-  ServerSession mockServerSession;
+  private ServerSession mockServerSession;
 
-  SubjectInjectorPlugin securityServerPlugin;
+  private SubjectInjectorPlugin securityServerPlugin;
 
   @Before
   public void setVariables() throws SecurityServiceException {
@@ -117,6 +119,7 @@ public class SubjectInjectorPluginTest {
   static class SubjectInjectorPluginTester extends SubjectInjectorPlugin {
 
     @Override
+    @VisibleForTesting
     String getStringSubjectFromSession(ServerSession session) {
       try {
         getSubjectCache().get(session.getUsername(), () -> cacheAndReturnSubject(session));

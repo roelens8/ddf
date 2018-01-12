@@ -25,7 +25,7 @@ import org.osgi.framework.InvalidSyntaxException;
 import org.osgi.framework.ServiceReference;
 
 public class BrokerAuthenticationPlugin implements ActiveMQServerPlugin {
-  BrokerMessageInterceptor brokerMessageInterceptor;
+  private BrokerMessageInterceptor brokerMessageInterceptor;
 
   public BrokerAuthenticationPlugin() throws InvalidSyntaxException {
     BundleContext bundleContext = getBundleContext();
@@ -47,7 +47,7 @@ public class BrokerAuthenticationPlugin implements ActiveMQServerPlugin {
     brokerMessageInterceptor.handleMessage(session, tx, message, direct, noAutoCreateQueue);
   }
 
-  BundleContext getBundleContext() {
+  private BundleContext getBundleContext() {
     return FrameworkUtil.getBundle(BrokerMessageInterceptor.class).getBundleContext();
   }
 }
