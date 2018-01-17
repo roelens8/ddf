@@ -17,7 +17,6 @@ import ddf.security.Subject;
 import ddf.security.assertion.SecurityAssertion;
 import ddf.security.service.SecurityManager;
 import ddf.security.service.SecurityServiceException;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +40,10 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
   private static SecurityManager securityManager;
 
   private static Set<String> configuredAddresses;
+
+  public SubjectInjectorPlugin(Set<String> configuredAddresses) {
+    this.configuredAddresses = configuredAddresses;
+  }
 
   @Override
   public void handleMessage(
@@ -73,16 +76,6 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
           .getProtonMessage()
           .setApplicationProperties(new ApplicationProperties(applicationPropertiesMap));
     }
-  }
-
-  @Override
-  public void setConfiguredAddresses(Set<String> addresses) {
-    configuredAddresses = new HashSet<>(addresses);
-  }
-
-  @Override
-  public Set<String> getConfiguredAddresses() {
-    return new HashSet<>(configuredAddresses);
   }
 
   private Element getSubjectAsElement(ServerSession session) {

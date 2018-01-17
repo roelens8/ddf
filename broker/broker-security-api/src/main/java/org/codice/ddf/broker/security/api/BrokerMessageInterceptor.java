@@ -13,7 +13,6 @@
  */
 package org.codice.ddf.broker.security.api;
 
-import java.util.Set;
 import org.apache.activemq.artemis.api.core.Message;
 import org.apache.activemq.artemis.core.server.ServerSession;
 import org.apache.activemq.artemis.core.transaction.Transaction;
@@ -44,8 +43,4 @@ public interface BrokerMessageInterceptor {
       Message message,
       boolean direct,
       boolean noAutoCreateQueue);
-
-  void setConfiguredAddresses(Set<String> addresses);
-
-  Set<String> getConfiguredAddresses();
 }

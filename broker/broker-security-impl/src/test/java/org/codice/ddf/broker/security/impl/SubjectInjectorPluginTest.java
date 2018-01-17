@@ -25,6 +25,7 @@ import ddf.security.service.SecurityManager;
 import ddf.security.service.SecurityServiceException;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Set;
 import org.apache.activemq.artemis.api.core.Message;
 import org.apache.activemq.artemis.core.message.impl.CoreMessage;
 import org.apache.activemq.artemis.core.server.ServerSession;
@@ -53,10 +54,9 @@ public class SubjectInjectorPluginTest {
     when(mockServerSession.getUsername()).thenReturn("hello");
     when(mockServerSession.getPassword()).thenReturn("world");
 
-    securityServerPlugin = new SubjectInjectorPluginTester();
+    securityServerPlugin =
+        new SubjectInjectorPluginTester(new HashSet<>(Collections.singletonList("test.address")));
     securityServerPlugin.setSecurityManager(mockSecurityManager);
-    securityServerPlugin.setConfiguredAddresses(
-        new HashSet<>(Collections.singletonList("test.address")));
   }
 
   @Test
@@ -106,7 +106,7 @@ public class SubjectInjectorPluginTest {
   @Test
   public void testNotApplicableAddress() throws SecurityServiceException {
 
-    securityServerPlugin.setConfiguredAddresses(new HashSet<>());
+    securityServerPlugin = new SubjectInjectorPluginTester(new HashSet<>());
 
     securityServerPlugin.clearCache();
     Message message = new CoreMessage();
@@ -117,6 +117,10 @@ public class SubjectInjectorPluginTest {
   }
 
   static class SubjectInjectorPluginTester extends SubjectInjectorPlugin {
+
+    public SubjectInjectorPluginTester(Set<String> configuredAddresses) {
+      super(configuredAddresses);
+    }
 
     @Override
     String getStringSubjectFromSession(ServerSession session) {
