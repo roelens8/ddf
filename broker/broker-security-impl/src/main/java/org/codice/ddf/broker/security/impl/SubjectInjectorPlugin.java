@@ -83,7 +83,7 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
           .getSecurityToken()
           .getToken();
     } catch (ExecutionException e) {
-      LOGGER.warn("Could not get Subject from token", e);
+      LOGGER.warn("Could not get Subject from token", e.getCause());
       return null;
     }
   }

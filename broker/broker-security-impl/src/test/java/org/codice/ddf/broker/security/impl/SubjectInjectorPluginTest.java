@@ -20,6 +20,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.google.common.annotations.VisibleForTesting;
 import ddf.security.Subject;
 import ddf.security.service.SecurityManager;
 import ddf.security.service.SecurityServiceException;
@@ -33,8 +34,6 @@ import org.apache.activemq.artemis.protocol.amqp.broker.AMQPMessage;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.google.common.annotations.VisibleForTesting;
-
 public class SubjectInjectorPluginTest {
   private Subject mockSubject;
 
@@ -45,7 +44,7 @@ public class SubjectInjectorPluginTest {
   private SubjectInjectorPlugin securityServerPlugin;
 
   @Before
-  public void setVariables() throws SecurityServiceException {
+  public void setup() throws SecurityServiceException {
 
     mockSubject = mock(Subject.class);
     mockSecurityManager = mock(SecurityManager.class);
@@ -78,6 +77,13 @@ public class SubjectInjectorPluginTest {
     message.setAddress("test.address");
     securityServerPlugin.handleMessage(mockServerSession, null, message, false, false);
     assertThat(message.getStringProperty("subject"), is("Hello World"));
+    assertThat(
+        ((AMQPMessage) message)
+            .getProtonMessage()
+            .getApplicationProperties()
+            .getValue()
+            .get("subject"),
+        is("Hello World"));
   }
 
   @Test
@@ -90,6 +96,13 @@ public class SubjectInjectorPluginTest {
     message.setAddress("test.address");
     securityServerPlugin.handleMessage(mockServerSession, null, message, false, false);
     assertThat(message.getStringProperty("subject"), is("Hello World"));
+    assertThat(
+        ((AMQPMessage) message)
+            .getProtonMessage()
+            .getApplicationProperties()
+            .getValue()
+            .get("subject"),
+        is("Hello World"));
   }
 
   @Test

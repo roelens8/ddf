@@ -23,14 +23,16 @@ import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import ddf.security.service.SecurityServiceException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+
 import org.apache.cxf.ws.security.tokenstore.SecurityToken;
 import org.codice.ddf.platform.util.XMLUtils;
 import org.junit.Test;
@@ -39,6 +41,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
+
+import ddf.security.service.SecurityServiceException;
 
 public class SAMLUtilsTest {
 
@@ -78,15 +82,20 @@ public class SAMLUtilsTest {
 
   @Test
   public void testSAMLAssertionParse() throws SecurityServiceException {
+    SAMLUtils spySamlUtils = Mockito.spy(SAMLUtils.getInstance());
 
-    SecurityToken securityToken = SAML_UTILS.getSecurityTokenFromSAMLAssertion(SAML_ASSERTION);
+    SecurityToken securityToken = spySamlUtils.getSecurityTokenFromSAMLAssertion(SAML_ASSERTION);
+    verify(spySamlUtils, times(0)).parseAssertionWithoutNamespace(SAML_ASSERTION);
     assertThat(securityToken, is(instanceOf(SecurityToken.class)));
   }
 
   @Test
   public void testSAMLAssertionParseFail() throws SecurityServiceException {
+    SAMLUtils spySamlUtils = Mockito.spy(SAMLUtils.getInstance());
 
-    SecurityToken securityToken = SAML_UTILS.getSecurityTokenFromSAMLAssertion(BAD_SAML_ASSERTION);
+    SecurityToken securityToken =
+        spySamlUtils.getSecurityTokenFromSAMLAssertion(BAD_SAML_ASSERTION);
+    verify(spySamlUtils, times(1)).parseAssertionWithoutNamespace(BAD_SAML_ASSERTION);
     assertThat(securityToken, is(instanceOf(SecurityToken.class)));
   }
 

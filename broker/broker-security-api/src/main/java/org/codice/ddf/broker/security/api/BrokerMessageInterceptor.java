@@ -13,7 +13,6 @@
  */
 package org.codice.ddf.broker.security.api;
 
-import java.util.Set;
 import org.apache.activemq.artemis.api.core.Message;
 import org.apache.activemq.artemis.core.server.ServerSession;
 import org.apache.activemq.artemis.core.transaction.Transaction;
@@ -28,7 +27,7 @@ import org.apache.activemq.artemis.core.transaction.Transaction;
 public interface BrokerMessageInterceptor {
 
   /**
-   * This message accepts a session, transaction, message, direct boolean and autoCreateQueue
+   * This message accepts a session, transaction, message, direct boolean and a noAutoCreateQueue
    * boolean. Using that information, it can modify the message. For example, it can add properties
    * to the message.
    *
