@@ -44,8 +44,4 @@ public interface BrokerMessageInterceptor {
       Message message,
       boolean direct,
       boolean noAutoCreateQueue);
-
-  void setConfiguredAddresses(Set<String> addresses);
-
-  Set<String> getConfiguredAddresses();
 }

@@ -70,14 +70,8 @@ public class SubjectInjectorPlugin implements BrokerMessageInterceptor {
     }
   }
 
-  @Override
   public void setConfiguredAddresses(Set<String> addresses) {
     configuredAddresses = new HashSet<>(addresses);
-  }
-
-  @Override
-  public Set<String> getConfiguredAddresses() {
-    return new HashSet<>(configuredAddresses);
   }
 
   private Element getSubjectAsElement(ServerSession session) {
