@@ -22,8 +22,8 @@
         <version>2.12.0-SNAPSHOT</version>
     </parent>
     <groupId>ddf.security</groupId>
-    <artifactId>security-util</artifactId>
-    <name>DDF :: Platform :: Security :: Util</name>
+    <artifactId>security-saml-util</artifactId>
+    <name>DDF :: Platform :: Security :: SAML :: Util</name>
     <packaging>bundle</packaging>
     <dependencies>
         <dependency>

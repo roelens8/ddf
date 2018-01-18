@@ -50,7 +50,7 @@
         </dependency>
         <dependency>
             <groupId>ddf.security</groupId>
-            <artifactId>security-util</artifactId>
+            <artifactId>security-saml-util</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

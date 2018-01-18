@@ -89,7 +89,7 @@
         </dependency>
         <dependency>
             <groupId>ddf.security</groupId>
-            <artifactId>security-util</artifactId>
+            <artifactId>security-saml-util</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
@@ -102,7 +102,7 @@
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Embed-Dependency>
-                            ddf-security-common,httpclient,httpcore,platform-util-unavailableurls,platform-util,security-util
+                            ddf-security-common,httpclient,httpcore,platform-util-unavailableurls,platform-util,security-saml-util
                         </Embed-Dependency>
                         <Import-Package>
                             org.apache.cxf.common.util,
