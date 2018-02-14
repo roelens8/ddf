@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
 /**
  * Copyright (c) Codice Foundation
@@ -22,42 +22,29 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
+    <artifactId>broker-security-api</artifactId>
+    <name>DDF :: Broker :: Security :: API</name>
     <packaging>bundle</packaging>
-
-    <artifactId>broker-connection-factory</artifactId>
-    <name>DDF :: Broker :: Connection Factory</name>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.activemq</groupId>
-            <artifactId>artemis-jms-client</artifactId>
+            <artifactId>artemis-server</artifactId>
             <version>${artemis.version}</version>
         </dependency>
-        <dependency>
-            <groupId>ddf.lib</groupId>
-            <artifactId>common-system</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>ddf.security.encryption</groupId>
-            <artifactId>security-encryption-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.camel</groupId>
-            <artifactId>camel-sjms</artifactId>
-            <version>${camel.version}</version>
-        </dependency>
     </dependencies>
+
 
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
+                <extensions>true</extensions>
                 <configuration>
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
+                        <Export-Package>org.codice.ddf.broker.security.api</Export-Package>
                     </instructions>
                 </configuration>
             </plugin>
