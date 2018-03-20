@@ -13,30 +13,6 @@
  */
 package org.codice.ddf.catalog.content.impl;
 
-import com.google.common.io.ByteSource;
-import ddf.catalog.Constants;
-import ddf.catalog.content.StorageException;
-import ddf.catalog.content.StorageProvider;
-import ddf.catalog.content.data.ContentItem;
-import ddf.catalog.content.data.impl.ContentItemImpl;
-import ddf.catalog.content.data.impl.ContentItemValidator;
-import ddf.catalog.content.operation.CreateStorageRequest;
-import ddf.catalog.content.operation.CreateStorageResponse;
-import ddf.catalog.content.operation.DeleteStorageRequest;
-import ddf.catalog.content.operation.DeleteStorageResponse;
-import ddf.catalog.content.operation.ReadStorageRequest;
-import ddf.catalog.content.operation.ReadStorageResponse;
-import ddf.catalog.content.operation.StorageRequest;
-import ddf.catalog.content.operation.UpdateStorageRequest;
-import ddf.catalog.content.operation.UpdateStorageResponse;
-import ddf.catalog.content.operation.impl.CreateStorageResponseImpl;
-import ddf.catalog.content.operation.impl.DeleteStorageResponseImpl;
-import ddf.catalog.content.operation.impl.ReadStorageResponseImpl;
-import ddf.catalog.content.operation.impl.UpdateStorageResponseImpl;
-import ddf.catalog.data.Metacard;
-import ddf.catalog.data.impl.AttributeImpl;
-import ddf.mime.MimeTypeMapper;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -56,15 +32,40 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
 import javax.activation.MimeType;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.io.ByteSource;
+
+import ddf.catalog.Constants;
+import ddf.catalog.content.AbstractFileSystemStorageProvider;
+import ddf.catalog.content.StorageException;
+import ddf.catalog.content.data.ContentItem;
+import ddf.catalog.content.data.impl.ContentItemImpl;
+import ddf.catalog.content.data.impl.ContentItemValidator;
+import ddf.catalog.content.operation.DeleteStorageRequest;
+import ddf.catalog.content.operation.DeleteStorageResponse;
+import ddf.catalog.content.operation.ReadStorageRequest;
+import ddf.catalog.content.operation.ReadStorageResponse;
+import ddf.catalog.content.operation.StorageRequest;
+import ddf.catalog.content.operation.UpdateStorageRequest;
+import ddf.catalog.content.operation.UpdateStorageResponse;
+import ddf.catalog.content.operation.impl.DeleteStorageResponseImpl;
+import ddf.catalog.content.operation.impl.ReadStorageResponseImpl;
+import ddf.catalog.content.operation.impl.UpdateStorageResponseImpl;
+import ddf.catalog.data.Metacard;
+import ddf.catalog.data.impl.AttributeImpl;
+import ddf.mime.MimeTypeMapper;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 /** File system storage provider. */
-public class FileSystemStorageProvider implements StorageProvider {
+public class FileSystemStorageProvider extends AbstractFileSystemStorageProvider {
 
   public static final String DEFAULT_CONTENT_REPOSITORY = "content";
 
@@ -95,46 +96,6 @@ public class FileSystemStorageProvider implements StorageProvider {
   /** Default constructor, invoked by blueprint. */
   public FileSystemStorageProvider() {
     LOGGER.debug("File System Provider initializing...");
-  }
-
-  @Override
-  public CreateStorageResponse create(CreateStorageRequest createRequest) throws StorageException {
-    LOGGER.trace("ENTERING: create");
-
-    List<ContentItem> contentItems = createRequest.getContentItems();
-
-    List<ContentItem> createdContentItems = new ArrayList<>(createRequest.getContentItems().size());
-
-    for (ContentItem contentItem : contentItems) {
-      try {
-        if (!ContentItemValidator.validate(contentItem)) {
-          LOGGER.warn("Item is not valid: {}", contentItem);
-          continue;
-        }
-        Path contentIdDir =
-            getTempContentItemDir(createRequest.getId(), new URI(contentItem.getUri()));
-
-        Path contentDirectory = Files.createDirectories(contentIdDir);
-
-        createdContentItems.add(
-            generateContentFile(
-                contentItem,
-                contentDirectory,
-                (String) createRequest.getPropertyValue(Constants.STORE_REFERENCE_KEY)));
-      } catch (IOException | URISyntaxException | IllegalArgumentException e) {
-        throw new StorageException(e);
-      }
-    }
-
-    CreateStorageResponse response =
-        new CreateStorageResponseImpl(createRequest, createdContentItems);
-    updateMap.put(
-        createRequest.getId(),
-        createdContentItems.stream().map(ContentItem::getUri).collect(Collectors.toSet()));
-
-    LOGGER.trace("EXITING: create");
-
-    return response;
   }
 
   @Override
@@ -474,50 +435,6 @@ public class FileSystemStorageProvider implements StorageProvider {
     return result;
   }
 
-  private Path getTempContentItemDir(String requestId, URI contentUri) {
-    List<String> pathParts = new ArrayList<>();
-    pathParts.add(requestId);
-    pathParts.addAll(
-        getContentFilePathParts(contentUri.getSchemeSpecificPart(), contentUri.getFragment()));
-
-    return Paths.get(
-        baseContentTmpDirectory.toAbsolutePath().toString(),
-        pathParts.toArray(new String[pathParts.size()]));
-  }
-
-  private Path getContentItemDir(URI contentUri) {
-    List<String> pathParts =
-        getContentFilePathParts(contentUri.getSchemeSpecificPart(), contentUri.getFragment());
-    try {
-      return Paths.get(
-          baseContentDirectory.toString(), pathParts.toArray(new String[pathParts.size()]));
-    } catch (InvalidPathException e) {
-      LOGGER.debug(
-          "Invalid path: [{}/{}]",
-          baseContentDirectory.toString(),
-          pathParts.stream().collect(Collectors.joining()));
-      return null;
-    }
-  }
-
-  // separating into 2 directories of 3 characters each allows us to
-  // get to 361,000,000,000 records before we would run up against the
-  // NTFS file system limits for a single directory
-  List<String> getContentFilePathParts(String id, String qualifier) {
-    String partsId = id;
-    if (id.length() < 6) {
-      partsId = StringUtils.rightPad(id, 6, "0");
-    }
-    List<String> parts = new ArrayList<>();
-    parts.add(partsId.substring(0, 3));
-    parts.add(partsId.substring(3, 6));
-    parts.add(partsId);
-    if (StringUtils.isNotBlank(qualifier)) {
-      parts.add(qualifier);
-    }
-    return parts;
-  }
-
   private Path getContentFilePath(URI uri) throws StorageException {
     Path contentIdDir = getContentItemDir(uri);
     List<Path> contentFiles;
@@ -541,7 +458,8 @@ public class FileSystemStorageProvider implements StorageProvider {
     return null;
   }
 
-  private ContentItem generateContentFile(
+  @Override
+  protected ContentItem generateContentFile(
       ContentItem item, Path contentDirectory, String storeReference)
       throws IOException, StorageException {
     LOGGER.trace("ENTERING: generateContentFile");
