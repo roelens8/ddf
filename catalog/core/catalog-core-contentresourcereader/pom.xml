@@ -71,6 +71,10 @@
                             httpclient,
                             httpcore
                         </Embed-Dependency>
+                        <Import-Package>
+                            ddf.catalog.content,
+                            *
+                        </Import-Package>
                     </instructions>
                 </configuration>
             </plugin>

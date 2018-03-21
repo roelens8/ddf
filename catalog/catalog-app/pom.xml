@@ -629,5 +629,10 @@
             <artifactId>catalog-transformer-preview</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>ddf.catalog.core</groupId>
+            <artifactId>catalog-core-hdfsstorageprovider</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>

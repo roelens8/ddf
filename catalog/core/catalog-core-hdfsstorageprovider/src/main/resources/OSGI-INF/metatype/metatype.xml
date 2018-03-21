@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * Copyright (c) Codice Foundation
+ *
+ * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation, either
+ * version 3 of the License, or any later version. 
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU Lesser General Public License for more details. A copy of the GNU Lesser General Public License is distributed along with this program and can be found at
+ * <http://www.gnu.org/licenses/lgpl.html>.
+ *
+ **/
+
+ -->
+<metatype:MetaData xmlns:metatype="http://www.osgi.org/xmlns/metatype/v1.0.0">
+
+    <OCD name="Hadoop Distributed File System Storage Provider"
+         id="org.codice.ddf.catalog.content.hdfs.HdfsStorageProvider">
+        <AD
+                description="Specifies the directory to use for the content repository. A shutdown of the server is necessary for this property to take effect. If a filepath is provided with directories that don't exist, HDFS Provider will attempt to create them."
+                name="HDFS Root Directory" id="hdfs" required="true"
+                type="String" default="hdfs://${org.codice.ddf.system.hostname}:9000"/>
+        <AD
+                description="Specifies the directory to use for the content repository. A shutdown of the server is necessary for this property to take effect. If a filepath is provided with directories that don't exist, HDFS Provider will attempt to create them. This path is appended to the HDFS Root directory."
+                name="Content Repository File Path" id="baseContentDirectory" required="true"
+                type="String" default="/data"/>
+    </OCD>
+
+    <Designate pid="org.codice.ddf.catalog.content.hdfs.HdfsStorageProvider">
+        <Object ocdref="org.codice.ddf.catalog.content.hdfs.HdfsStorageProvider"/>
+    </Designate>
+
+</metatype:MetaData>

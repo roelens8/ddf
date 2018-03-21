@@ -22,6 +22,7 @@ import ddf.catalog.content.operation.ReadStorageResponse;
 import ddf.catalog.content.operation.StorageRequest;
 import ddf.catalog.content.operation.UpdateStorageRequest;
 import ddf.catalog.content.operation.UpdateStorageResponse;
+import java.io.IOException;
 
 /**
  * Provider of content repository storage. All URIs should use the {@link
@@ -61,7 +62,7 @@ public interface StorageProvider {
    * @throws StorageException if any problems encountered while retrieving the {@link
    *     ddf.catalog.content.data.ContentItem}
    */
-  ReadStorageResponse read(ReadStorageRequest readRequest) throws StorageException;
+  ReadStorageResponse read(ReadStorageRequest readRequest) throws StorageException, IOException;
 
   /**
    * Updates a {@link ddf.catalog.content.data.ContentItem} in the content repository. The {@link
