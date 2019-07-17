@@ -22,13 +22,13 @@
         <cm:managed-properties
                 persistent-id="org.codice.ddf.catalog.content.impl.S3StorageProvider"
                 update-strategy="container-managed"/>
-        <property name="mimeTypeMapper" ref="mimeTypeMapper"/>
-        <property name="s3Endpoint" value="s3.us-gov-west-1.amazonaws.com"/>
-        <property name="s3Region" value="us-gov-west-1"/>
+        <argument value="s3.us-gov-west-1.amazonaws.com"/>
+        <argument value="us-gov-west-1"/>
+        <argument value=""/>
+        <argument value=""/>
         <property name="s3Bucket" value="dibtest"/>
         <property name="contentPrefix" value="data/content/store/"/>
-        <property name="s3AccessKey" value=""/>
-        <property name="s3SecretKey" value=""/>
+        <property name="mimeTypeMapper" ref="mimeTypeMapper"/>
     </bean>
 
     <service ref="s3StoreService" interface="ddf.catalog.content.StorageProvider"/>

@@ -78,11 +78,11 @@ public class S3StorageProvider implements StorageProvider {
 
   private String s3Bucket;
 
-  private String contentPrefix;
-
   private String s3AccessKey;
 
   private String s3SecretKey;
+
+  private String contentPrefix;
 
   private Map<String, List<Metacard>> deletionMap = new ConcurrentHashMap<>();
 
@@ -90,39 +90,8 @@ public class S3StorageProvider implements StorageProvider {
 
   private AmazonS3 amazonS3;
 
-  public void setS3Endpoint(String s3Endpoint) {
-    this.s3Endpoint = s3Endpoint;
-  }
-
-  public void setS3Region(String s3Region) {
-    this.s3Region = s3Region;
-  }
-
-  public void setS3AccessKey(String s3AccessKey) {
-    this.s3AccessKey = s3AccessKey;
-  }
-
-  public void setS3SecretKey(String s3SecretKey) {
-    this.s3SecretKey = s3SecretKey;
-  }
-
-  public void setContentPrefix(String contentPrefix) {
-    this.contentPrefix = contentPrefix;
-  }
-
-  public void setS3Bucket(String s3Bucket) {
-    this.s3Bucket = s3Bucket;
-  }
-
-  public void setMimeTypeMapper(MimeTypeMapper mimeTypeMapper) {
-    this.mimeTypeMapper = mimeTypeMapper;
-  }
-
-  /** Default constructor, invoked by blueprint. */
-  public S3StorageProvider() {
-    LOGGER.debug("File System Provider initializing...");
-
-    createAmazonS3();
+  private S3StorageProvider() {
+    LOGGER.info("S3 Content Storage Provider initializing...");
   }
 
   @Override
@@ -416,8 +385,8 @@ public class S3StorageProvider implements StorageProvider {
     return contentItem;
   }
 
-  private void createAmazonS3() {
-
+  public void init() {
+    LOGGER.debug("Initializing Amazon S3 Client...");
     AwsClientBuilder.EndpointConfiguration endpointConfiguration =
         new AwsClientBuilder.EndpointConfiguration(s3Endpoint, s3Region);
     if (org.apache.commons.lang3.StringUtils.isNotBlank(s3AccessKey)) {
@@ -431,5 +400,31 @@ public class S3StorageProvider implements StorageProvider {
     }
     amazonS3 =
         AmazonS3ClientBuilder.standard().withEndpointConfiguration(endpointConfiguration).build();
+  }
+
+  public void update(Map<String, ?> props) {
+    if (props != null) {
+      setS3Endpoint((String) props.get("s3Endpoint"));
+      setS3Region((String) props.get("s3Region"));
+      setS3AccessKey((String) props.get("s3AccessKey"));
+      setS3SecretKey((String) props.get("s3SecretKey"));
+    }
+    init();
+  }
+
+  public void setS3Endpoint(String s3Endpoint) {
+    this.s3Endpoint = s3Endpoint;
+  }
+
+  public void setS3Region(String s3Region) {
+    this.s3Region = s3Region;
+  }
+
+  public void setS3AccessKey(String s3AccessKey) {
+    this.s3AccessKey = s3AccessKey;
+  }
+
+  public void setS3SecretKey(String s3SecretKey) {
+    this.s3SecretKey = s3SecretKey;
   }
 }

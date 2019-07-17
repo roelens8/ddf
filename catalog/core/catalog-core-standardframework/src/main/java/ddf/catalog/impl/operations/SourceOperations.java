@@ -147,7 +147,8 @@ public class SourceOperations extends DescribableImpl {
     // Not sure if block below makes a difference... I think without it all storage storageProviders
     // should still get called.
     // It either doesn't matter or it was my hacky
-    // way to not have to add a configuration option or deal with manually starting/stopping bundles for
+    // way to not have to add a configuration option or deal with manually starting/stopping bundles
+    // for
     // testing.
     if (storageProviders.size() == 1) {
       this.storage = storageProviders.get(0);
