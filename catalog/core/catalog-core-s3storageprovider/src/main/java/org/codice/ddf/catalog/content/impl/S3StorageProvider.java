@@ -62,7 +62,7 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** File system storage provider. */
+/** S3 Content Storage Provider. */
 public class S3StorageProvider implements StorageProvider {
 
   private static final String DEFAULT_MIME_TYPE = "application/octet-stream";
@@ -90,8 +90,9 @@ public class S3StorageProvider implements StorageProvider {
 
   private AmazonS3 amazonS3;
 
-  private S3StorageProvider() {
+  public S3StorageProvider(final MimeTypeMapper mimeTypeMapper) {
     LOGGER.info("S3 Content Storage Provider initializing...");
+    this.mimeTypeMapper = mimeTypeMapper;
   }
 
   @Override
@@ -99,22 +100,18 @@ public class S3StorageProvider implements StorageProvider {
     LOGGER.trace("ENTERING: create");
 
     List<ContentItem> contentItems = createRequest.getContentItems();
-
     List<ContentItem> createdContentItems = new ArrayList<>(createRequest.getContentItems().size());
-
     for (ContentItem contentItem : contentItems) {
       try {
         if (!ContentItemValidator.validate(contentItem)) {
           LOGGER.warn("Item is not valid: {}", contentItem);
           continue;
         }
-
         createdContentItems.add(generateContentItem(contentItem));
       } catch (IOException e) {
         throw new StorageException(e);
       }
     }
-
     CreateStorageResponse response =
         new CreateStorageResponseImpl(createRequest, createdContentItems);
     updateMap.put(createRequest.getId(), createdContentItems.stream().collect(Collectors.toSet()));
@@ -131,7 +128,6 @@ public class S3StorageProvider implements StorageProvider {
     if (readRequest.getResourceUri() == null) {
       return new ReadStorageResponseImpl(readRequest);
     }
-
     URI uri = readRequest.getResourceUri();
     ContentItem returnItem = readContent(uri);
     return new ReadStorageResponseImpl(readRequest, returnItem);
@@ -142,18 +138,14 @@ public class S3StorageProvider implements StorageProvider {
     LOGGER.trace("ENTERING: update");
 
     List<ContentItem> contentItems = updateRequest.getContentItems();
-
     List<ContentItem> updatedItems = new ArrayList<>(updateRequest.getContentItems().size());
-
     for (ContentItem contentItem : contentItems) {
       try {
         if (!ContentItemValidator.validate(contentItem)) {
           LOGGER.warn("Item is not valid: {}", contentItem);
           continue;
         }
-
         ContentItem updateItem = contentItem;
-
         updatedItems.add(generateContentItem(updateItem));
       } catch (IOException | IllegalArgumentException e) {
         throw new StorageException(e);
@@ -179,7 +171,6 @@ public class S3StorageProvider implements StorageProvider {
         }
       }
     }
-
     UpdateStorageResponse response = new UpdateStorageResponseImpl(updateRequest, updatedItems);
     updateMap.put(updateRequest.getId(), updatedItems.stream().collect(Collectors.toSet()));
 
@@ -193,9 +184,7 @@ public class S3StorageProvider implements StorageProvider {
     LOGGER.trace("ENTERING: delete");
 
     List<Metacard> itemsToBeDeleted = new ArrayList<>();
-
     List<ContentItem> deletedContentItems = new ArrayList<>(deleteRequest.getMetacards().size());
-
     for (Metacard metacard : deleteRequest.getMetacards()) {
       LOGGER.debug("File to be deleted: {}", metacard.getId());
 
@@ -219,7 +208,6 @@ public class S3StorageProvider implements StorageProvider {
         throw new StorageException("Could not delete file: " + metacard.getId(), e);
       }
     }
-
     deletionMap.put(deleteRequest.getId(), itemsToBeDeleted);
 
     DeleteStorageResponse response =
@@ -245,11 +233,7 @@ public class S3StorageProvider implements StorageProvider {
     try {
       for (Metacard metacard : itemsToBeDeleted) {
         LOGGER.debug("Object to be deleted: {}", metacard.getId());
-
-        String metacardId = metacard.getId();
-
-        String contentPrefix = getContentPrefix(metacardId);
-
+        String contentPrefix = getContentPrefix(metacard.getId());
         for (S3ObjectSummary object :
             amazonS3.listObjectsV2(s3Bucket, contentPrefix).getObjectSummaries()) {
           amazonS3.deleteObject(s3Bucket, object.getKey());
@@ -261,20 +245,17 @@ public class S3StorageProvider implements StorageProvider {
   }
 
   private void commitUpdates(StorageRequest request) throws StorageException {
-    try {
-      for (ContentItem item : updateMap.get(request.getId())) {
+    for (ContentItem item : updateMap.get(request.getId())) {
+      try (InputStream inputStream = item.getInputStream()) {
         String contentPrefix = getContentPrefix(new URI(item.getUri()).getSchemeSpecificPart());
-
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(item.getSize());
-
-        amazonS3.putObject(
-            s3Bucket, contentPrefix + item.getFilename(), item.getInputStream(), metadata);
+        amazonS3.putObject(s3Bucket, contentPrefix + item.getFilename(), inputStream, metadata);
+      } catch (URISyntaxException | IOException e) {
+        throw new StorageException(e);
+      } finally {
+        rollback(request);
       }
-    } catch (URISyntaxException | IOException e) {
-      throw new StorageException(e);
-    } finally {
-      rollback(request);
     }
   }
 
@@ -288,7 +269,6 @@ public class S3StorageProvider implements StorageProvider {
   private ContentItem readContent(URI uri) throws StorageException {
     String contentKey = getContentItemKey(uri);
     String filename = FilenameUtils.getName(contentKey);
-
     String extension = FilenameUtils.getExtension(filename);
     URI reference = null;
 
@@ -313,19 +293,14 @@ public class S3StorageProvider implements StorageProvider {
       throw new StorageException("Cannot read " + reference + ".");
     }
 
-    if (mimeType.equals(DEFAULT_MIME_TYPE)) {
+    if (DEFAULT_MIME_TYPE.equals(mimeType)) {
       mimeType = s3Object.getObjectMetadata().getContentType();
     }
 
-    S3Object s3Object2 = amazonS3.getObject(s3Bucket, contentKey);
-    InputStream inputStream = s3Object2.getObjectContent();
-    try {
-
+    try (InputStream inputStream = s3Object.getObjectContent()) {
       byte[] byteArray = IOUtils.toByteArray(inputStream);
       size = byteArray.length;
-
       byteSource = ByteSource.wrap(byteArray);
-
       return new ContentItemImpl(
           uri.getSchemeSpecificPart(),
           uri.getFragment(),
@@ -337,13 +312,11 @@ public class S3StorageProvider implements StorageProvider {
     } catch (IOException e) {
       LOGGER.error(e.getMessage());
     }
-
     return null;
   }
 
   private String getContentPrefix(String id) {
     String prefix = contentPrefix;
-
     if (!contentPrefix.endsWith("/")) {
       prefix = prefix.concat("/");
     }
@@ -365,20 +338,21 @@ public class S3StorageProvider implements StorageProvider {
     LOGGER.trace("ENTERING: generateContentFile");
 
     ByteSource byteSource;
+    ContentItemImpl contentItem;
 
-    InputStream inputStream = item.getInputStream();
-    byteSource = ByteSource.wrap(IOUtils.toByteArray(inputStream));
-
-    // See if this item.getFilename matches the filename in readContent
-    ContentItemImpl contentItem =
-        new ContentItemImpl(
-            item.getId(),
-            item.getQualifier(),
-            byteSource,
-            item.getMimeType().toString(),
-            item.getFilename(),
-            item.getSize(),
-            item.getMetacard());
+    try (InputStream inputStream = item.getInputStream()) {
+      byteSource = ByteSource.wrap(IOUtils.toByteArray(inputStream));
+      // See if this item.getFilename matches the filename in readContent
+      contentItem =
+          new ContentItemImpl(
+              item.getId(),
+              item.getQualifier(),
+              byteSource,
+              item.getMimeType().toString(),
+              item.getFilename(),
+              item.getSize(),
+              item.getMetacard());
+    }
 
     LOGGER.trace("EXITING: generateContentFile");
 
@@ -408,6 +382,8 @@ public class S3StorageProvider implements StorageProvider {
       setS3Region((String) props.get("s3Region"));
       setS3AccessKey((String) props.get("s3AccessKey"));
       setS3SecretKey((String) props.get("s3SecretKey"));
+      setS3Bucket((String) props.get("s3Bucket"));
+      setContentPrefix((String) props.get("contentPrefix"));
     }
     init();
   }
@@ -426,5 +402,13 @@ public class S3StorageProvider implements StorageProvider {
 
   public void setS3SecretKey(String s3SecretKey) {
     this.s3SecretKey = s3SecretKey;
+  }
+
+  public void setS3Bucket(String s3Bucket) {
+    this.s3Bucket = s3Bucket;
+  }
+
+  public void setContentPrefix(String contentPrefix) {
+    this.contentPrefix = contentPrefix;
   }
 }
