@@ -145,30 +145,28 @@ public class S3StorageProvider implements StorageProvider {
           LOGGER.warn("Item is not valid: {}", contentItem);
           continue;
         }
-        ContentItem updateItem = contentItem;
-        updatedItems.add(generateContentItem(updateItem));
+        ContentItem updateItem = generateContentItem(contentItem);
+        updatedItems.add(updateItem);
+
+        if (updateItem.getMetacard().getResourceURI() == null
+            && StringUtils.isBlank(contentItem.getQualifier())) {
+          updateItem
+              .getMetacard()
+              .setAttribute(new AttributeImpl(Metacard.RESOURCE_URI, updateItem.getUri()));
+          try {
+            updateItem
+                .getMetacard()
+                .setAttribute(new AttributeImpl(Metacard.RESOURCE_SIZE, updateItem.getSize()));
+          } catch (IOException e) {
+            LOGGER.info(
+                "Could not set size of content item [{}] on metacard [{}]",
+                updateItem.getId(),
+                updateItem.getMetacard().getId(),
+                e);
+          }
+        }
       } catch (IOException | IllegalArgumentException e) {
         throw new StorageException(e);
-      }
-    }
-
-    for (ContentItem contentItem : updatedItems) {
-      if (contentItem.getMetacard().getResourceURI() == null
-          && StringUtils.isBlank(contentItem.getQualifier())) {
-        contentItem
-            .getMetacard()
-            .setAttribute(new AttributeImpl(Metacard.RESOURCE_URI, contentItem.getUri()));
-        try {
-          contentItem
-              .getMetacard()
-              .setAttribute(new AttributeImpl(Metacard.RESOURCE_SIZE, contentItem.getSize()));
-        } catch (IOException e) {
-          LOGGER.info(
-              "Could not set size of content item [{}] on metacard [{}]",
-              contentItem.getId(),
-              contentItem.getMetacard().getId(),
-              e);
-        }
       }
     }
     UpdateStorageResponse response = new UpdateStorageResponseImpl(updateRequest, updatedItems);
@@ -228,7 +226,7 @@ public class S3StorageProvider implements StorageProvider {
     }
   }
 
-  private void commitDeletes(StorageRequest request) throws StorageException {
+  private void commitDeletes(StorageRequest request) {
     List<Metacard> itemsToBeDeleted = deletionMap.get(request.getId());
     try {
       for (Metacard metacard : itemsToBeDeleted) {
@@ -270,15 +268,17 @@ public class S3StorageProvider implements StorageProvider {
     String contentKey = getContentItemKey(uri);
     String filename = FilenameUtils.getName(contentKey);
     String extension = FilenameUtils.getExtension(filename);
-    URI reference = null;
 
     String mimeType = DEFAULT_MIME_TYPE;
-    long size;
-    ByteSource byteSource;
+    long size = 0;
+    ByteSource byteSource = null;
 
     S3Object s3Object = amazonS3.getObject(s3Bucket, contentKey);
-
+    byte[] byteArray;
     try (InputStream fileInputStream = s3Object.getObjectContent()) {
+      byteArray = IOUtils.toByteArray(fileInputStream);
+      size = byteArray.length;
+      byteSource = ByteSource.wrap(byteArray);
       mimeType = mimeTypeMapper.guessMimeType(fileInputStream, extension);
     } catch (MimeTypeResolutionException e) {
       LOGGER.debug(
@@ -287,32 +287,16 @@ public class S3StorageProvider implements StorageProvider {
           DEFAULT_MIME_TYPE);
     } catch (IOException ie) {
       LOGGER.debug(
-          "Error opening stream to external reference {}. Failing StorageProvider read.",
-          reference,
+          "Error getting object from S3 for content key: {}. Failing StorageProvider read.",
+          contentKey,
           ie);
-      throw new StorageException("Cannot read " + reference + ".");
+      throw new StorageException("Cannot read object for content key: " + contentKey + ".");
     }
-
     if (DEFAULT_MIME_TYPE.equals(mimeType)) {
       mimeType = s3Object.getObjectMetadata().getContentType();
     }
-
-    try (InputStream inputStream = s3Object.getObjectContent()) {
-      byte[] byteArray = IOUtils.toByteArray(inputStream);
-      size = byteArray.length;
-      byteSource = ByteSource.wrap(byteArray);
-      return new ContentItemImpl(
-          uri.getSchemeSpecificPart(),
-          uri.getFragment(),
-          byteSource,
-          mimeType,
-          filename,
-          size,
-          null);
-    } catch (IOException e) {
-      LOGGER.error(e.getMessage());
-    }
-    return null;
+    return new ContentItemImpl(
+        uri.getSchemeSpecificPart(), uri.getFragment(), byteSource, mimeType, filename, size, null);
   }
 
   private String getContentPrefix(String id) {
