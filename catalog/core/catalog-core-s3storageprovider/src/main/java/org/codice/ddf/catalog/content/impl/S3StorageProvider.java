@@ -13,16 +13,17 @@
  */
 package org.codice.ddf.catalog.content.impl;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
+import com.amazonaws.services.s3.model.SSEAwsKeyManagementParams;
 import com.google.common.io.ByteSource;
 import ddf.catalog.content.StorageException;
 import ddf.catalog.content.StorageProvider;
@@ -56,16 +57,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import javax.ws.rs.core.MediaType;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.codice.ddf.configuration.PropertyResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** S3 Content Storage Provider. */
 public class S3StorageProvider implements StorageProvider {
 
-  private static final String DEFAULT_MIME_TYPE = "application/octet-stream";
+  private static final String DEFAULT_MIME_TYPE = MediaType.APPLICATION_OCTET_STREAM;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(S3StorageProvider.class);
 
@@ -84,14 +87,17 @@ public class S3StorageProvider implements StorageProvider {
 
   private String contentPrefix;
 
+  private String awsKmsKeyId;
+
   private Map<String, List<Metacard>> deletionMap = new ConcurrentHashMap<>();
 
   private Map<String, Set<ContentItem>> updateMap = new ConcurrentHashMap<>();
 
-  private AmazonS3 amazonS3;
+  AmazonS3 amazonS3;
 
   public S3StorageProvider(final MimeTypeMapper mimeTypeMapper) {
     LOGGER.info("S3 Content Storage Provider initializing...");
+
     this.mimeTypeMapper = mimeTypeMapper;
   }
 
@@ -195,14 +201,16 @@ public class S3StorageProvider implements StorageProvider {
       }
       try {
         String contentPrefix =
-            getContentPrefix(new URI(deletedContentItem.getUri()).getSchemeSpecificPart());
+            getFullContentPrefix(
+                new URI(deletedContentItem.getUri()).getSchemeSpecificPart(),
+                new URI(deletedContentItem.getUri()).getFragment());
 
         if (contentPrefix != null
             && amazonS3.listObjectsV2(s3Bucket, contentPrefix).getKeyCount() != 0) {
           deletedContentItems.add(deletedContentItem);
           itemsToBeDeleted.add(metacard);
         }
-      } catch (URISyntaxException e) {
+      } catch (URISyntaxException | SdkClientException e) {
         throw new StorageException("Could not delete file: " + metacard.getId(), e);
       }
     }
@@ -226,17 +234,19 @@ public class S3StorageProvider implements StorageProvider {
     }
   }
 
-  private void commitDeletes(StorageRequest request) {
+  private void commitDeletes(StorageRequest request) throws StorageException {
     List<Metacard> itemsToBeDeleted = deletionMap.get(request.getId());
     try {
       for (Metacard metacard : itemsToBeDeleted) {
         LOGGER.debug("Object to be deleted: {}", metacard.getId());
-        String contentPrefix = getContentPrefix(metacard.getId());
+        String contentPrefix = getFullContentPrefix(metacard.getId(), "");
         for (S3ObjectSummary object :
             amazonS3.listObjectsV2(s3Bucket, contentPrefix).getObjectSummaries()) {
           amazonS3.deleteObject(s3Bucket, object.getKey());
         }
       }
+    } catch (SdkClientException e) {
+      throw new StorageException(e);
     } finally {
       rollback(request);
     }
@@ -245,11 +255,30 @@ public class S3StorageProvider implements StorageProvider {
   private void commitUpdates(StorageRequest request) throws StorageException {
     for (ContentItem item : updateMap.get(request.getId())) {
       try (InputStream inputStream = item.getInputStream()) {
-        String contentPrefix = getContentPrefix(new URI(item.getUri()).getSchemeSpecificPart());
+        String fullContentPrefix =
+            getFullContentPrefix(
+                new URI(item.getUri()).getSchemeSpecificPart(),
+                new URI(item.getUri()).getFragment());
+        String objectPath = fullContentPrefix + item.getFilename();
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentLength(item.getSize());
-        amazonS3.putObject(s3Bucket, contentPrefix + item.getFilename(), inputStream, metadata);
-      } catch (URISyntaxException | IOException e) {
+        for (S3ObjectSummary object :
+            amazonS3.listObjectsV2(s3Bucket, fullContentPrefix).getObjectSummaries()) {
+          amazonS3.deleteObject(s3Bucket, object.getKey());
+        }
+        // Encryption method set to AWS-KMS (AWS managed key)
+        SSEAwsKeyManagementParams sseAwsKeyManagementParams;
+        if (StringUtils.isBlank(awsKmsKeyId)) {
+          // Use default AWS managed key
+          sseAwsKeyManagementParams = new SSEAwsKeyManagementParams();
+        } else {
+          // Use custom managed key
+          sseAwsKeyManagementParams = new SSEAwsKeyManagementParams(awsKmsKeyId);
+        }
+        amazonS3.putObject(
+            new PutObjectRequest(s3Bucket, objectPath, inputStream, metadata)
+                .withSSEAwsKeyManagementParams(sseAwsKeyManagementParams));
+      } catch (URISyntaxException | IOException | SdkClientException e) {
         throw new StorageException(e);
       } finally {
         rollback(request);
@@ -266,6 +295,11 @@ public class S3StorageProvider implements StorageProvider {
 
   private ContentItem readContent(URI uri) throws StorageException {
     String contentKey = getContentItemKey(uri);
+    if (StringUtils.isBlank(contentKey)) {
+      LOGGER.debug("Content key is empty. Failing StorageProvider read.");
+      throw new StorageException(
+          "Could not get valid content key for resource URI: " + uri.toString());
+    }
     String filename = FilenameUtils.getName(contentKey);
     String extension = FilenameUtils.getExtension(filename);
 
@@ -273,10 +307,18 @@ public class S3StorageProvider implements StorageProvider {
     long size = 0;
     ByteSource byteSource = null;
 
-    S3Object s3Object = amazonS3.getObject(s3Bucket, contentKey);
-    byte[] byteArray;
-    try (InputStream fileInputStream = s3Object.getObjectContent()) {
-      byteArray = IOUtils.toByteArray(fileInputStream);
+    S3Object s3Object = null;
+    try {
+      s3Object = amazonS3.getObject(s3Bucket, contentKey);
+      if (s3Object == null) {
+        LOGGER.debug(
+            "Retrieved null S3 object from S3 for content key: {}. Failing StorageProvider read",
+            contentKey);
+        throw new StorageException(
+            "Could not get object from S3 for content key: " + contentKey + ".");
+      }
+      InputStream fileInputStream = s3Object.getObjectContent();
+      byte[] byteArray = IOUtils.toByteArray(fileInputStream);
       size = byteArray.length;
       byteSource = ByteSource.wrap(byteArray);
       mimeType = mimeTypeMapper.guessMimeType(fileInputStream, extension);
@@ -285,12 +327,13 @@ public class S3StorageProvider implements StorageProvider {
           "Could not determine mime type for file extension = {}; defaulting to {}",
           extension,
           DEFAULT_MIME_TYPE);
-    } catch (IOException ie) {
+    } catch (IOException | SdkClientException ex) {
       LOGGER.debug(
-          "Error getting object from S3 for content key: {}. Failing StorageProvider read.",
+          "Error getting or reading object from S3 for content key: {}. Failing StorageProvider read.",
           contentKey,
-          ie);
-      throw new StorageException("Cannot read object for content key: " + contentKey + ".");
+          ex);
+      throw new StorageException(
+          "Could not get or read object for content key: " + contentKey + ".");
     }
     if (DEFAULT_MIME_TYPE.equals(mimeType)) {
       mimeType = s3Object.getObjectMetadata().getContentType();
@@ -299,22 +342,34 @@ public class S3StorageProvider implements StorageProvider {
         uri.getSchemeSpecificPart(), uri.getFragment(), byteSource, mimeType, filename, size, null);
   }
 
-  private String getContentPrefix(String id) {
+  String getFullContentPrefix(String id, String qualifier) {
     String prefix = contentPrefix;
     if (!contentPrefix.endsWith("/")) {
       prefix = prefix.concat("/");
     }
     prefix = prefix.concat(id.substring(0, 3) + "/" + id.substring(3, 6) + "/" + id + "/");
-
+    if (StringUtils.isNotBlank(qualifier)) {
+      prefix = prefix.concat(qualifier + "/");
+    }
     return prefix;
   }
 
-  private String getContentItemKey(URI uri) {
-    List<S3ObjectSummary> summaries =
-        amazonS3
-            .listObjects(s3Bucket, getContentPrefix(uri.getSchemeSpecificPart()))
-            .getObjectSummaries();
-
+  private String getContentItemKey(URI uri) throws StorageException {
+    List<S3ObjectSummary> summaries;
+    try {
+      summaries =
+          amazonS3
+              .listObjectsV2(
+                  s3Bucket, getFullContentPrefix(uri.getSchemeSpecificPart(), uri.getFragment()))
+              .getObjectSummaries();
+    } catch (SdkClientException ex) {
+      throw new StorageException(ex);
+    }
+    if (summaries == null || summaries.isEmpty()) {
+      LOGGER.debug(
+          "Unable to get content key as the list of S3 object summaries is null or empty.");
+      return null;
+    }
     return summaries.get(0).getKey();
   }
 
@@ -326,7 +381,6 @@ public class S3StorageProvider implements StorageProvider {
 
     try (InputStream inputStream = item.getInputStream()) {
       byteSource = ByteSource.wrap(IOUtils.toByteArray(inputStream));
-      // See if this item.getFilename matches the filename in readContent
       contentItem =
           new ContentItemImpl(
               item.getId(),
@@ -347,17 +401,18 @@ public class S3StorageProvider implements StorageProvider {
     LOGGER.debug("Initializing Amazon S3 Client...");
     AwsClientBuilder.EndpointConfiguration endpointConfiguration =
         new AwsClientBuilder.EndpointConfiguration(s3Endpoint, s3Region);
-    if (org.apache.commons.lang3.StringUtils.isNotBlank(s3AccessKey)) {
-      AWSCredentials awsCredentials = new BasicAWSCredentials(s3AccessKey, s3SecretKey);
-      AWSCredentialsProvider credentialsProvider = new AWSStaticCredentialsProvider(awsCredentials);
+    if (StringUtils.isNotBlank(s3AccessKey) && StringUtils.isNotBlank(s3SecretKey)) {
       amazonS3 =
           AmazonS3ClientBuilder.standard()
-              .withCredentials(credentialsProvider)
+              .withCredentials(
+                  new AWSStaticCredentialsProvider(
+                      new BasicAWSCredentials(s3AccessKey, s3SecretKey)))
               .withEndpointConfiguration(endpointConfiguration)
               .build();
+    } else {
+      amazonS3 =
+          AmazonS3ClientBuilder.standard().withEndpointConfiguration(endpointConfiguration).build();
     }
-    amazonS3 =
-        AmazonS3ClientBuilder.standard().withEndpointConfiguration(endpointConfiguration).build();
   }
 
   public void update(Map<String, ?> props) {
@@ -368,6 +423,7 @@ public class S3StorageProvider implements StorageProvider {
       setS3SecretKey((String) props.get("s3SecretKey"));
       setS3Bucket((String) props.get("s3Bucket"));
       setContentPrefix((String) props.get("contentPrefix"));
+      setAwsKmsKeyId((String) props.get("awsKmsKeyId"));
     }
     init();
   }
@@ -393,6 +449,10 @@ public class S3StorageProvider implements StorageProvider {
   }
 
   public void setContentPrefix(String contentPrefix) {
-    this.contentPrefix = contentPrefix;
+    this.contentPrefix = PropertyResolver.resolveProperties(contentPrefix);
+  }
+
+  public void setAwsKmsKeyId(String awsKmsKeyId) {
+    this.awsKmsKeyId = awsKmsKeyId;
   }
 }
