@@ -23,6 +23,7 @@ import org.codice.ddf.security.handler.api.AuthenticationHandler;
 import org.codice.ddf.security.handler.api.BaseAuthenticationToken;
 import org.codice.ddf.security.handler.api.HandlerResult;
 import org.codice.ddf.security.handler.api.PKIAuthenticationTokenFactory;
+import org.codice.ddf.security.ocsp.OcspService;
 import org.codice.ddf.security.policy.context.ContextPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,5 +133,9 @@ public abstract class AbstractPKIHandler implements AuthenticationHandler {
 
   public void setTokenFactory(PKIAuthenticationTokenFactory factory) {
     tokenFactory = factory;
+  }
+
+  public void setOcspService(OcspService ocspService) {
+    crlChecker.setOcspService(ocspService);
   }
 }

@@ -37,6 +37,7 @@ import org.apache.commons.lang.time.DateUtils;
 import org.apache.wss4j.common.crypto.Merlin;
 import org.codice.ddf.configuration.AbsolutePathResolver;
 import org.codice.ddf.platform.util.StandardThreadFactoryBuilder;
+import org.codice.ddf.security.ocsp.OcspService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +54,8 @@ public class CrlChecker {
 
   private static final CrlRefresh REFRESH = new CrlRefresh();
 
+  protected OcspService ocspService;
+
   static {
     Executors.newScheduledThreadPool(
             1, StandardThreadFactoryBuilder.newThreadFactory("crlCheckerThread"))
@@ -68,10 +71,19 @@ public class CrlChecker {
    *     are all revoked.
    */
   public boolean passesCrlCheck(X509Certificate[] certs) {
+    boolean returnVal = true;
     if (crlCache.get() == null) {
       String errorMsg = "CRL is not set. Skipping CRL check";
       LOGGER.trace(errorMsg);
-      return true;
+
+      if (ocspService == null) {
+        errorMsg = "OCSP is not set. Skipping OCSP check";
+        LOGGER.trace(errorMsg);
+      } else {
+        LOGGER.trace("Checking request certs against OCSP.");
+        returnVal = ocspService.passesOcspCheck(certs);
+      }
+      return returnVal;
     }
     LOGGER.trace("Checking request certs against CRL.");
     return passesCrl(certs);
@@ -111,6 +123,10 @@ public class CrlChecker {
    */
   public void setCrlLocation(String location) {
     REFRESH.setCrlLocation(location);
+  }
+
+  public void setOcspService(OcspService ocspService) {
+    this.ocspService = ocspService;
   }
 
   static URL urlFromPath(String location) {
